@@ -84,13 +84,47 @@ The final score is calculated using the formula:
 - Face cards and Aces significantly boost your card value total
 - Consider both the hand type and the card values when selecting your hand
 
+## Testing
+
+The game includes comprehensive tests covering all poker hand types and edge cases.
+
+### Running Tests
+```bash
+# Run all tests
+go test
+
+# Run tests with verbose output
+go test -v
+
+# Check test coverage
+go test -cover
+```
+
+### Test Coverage
+- **66%+ statement coverage**
+- All 10 poker hand types tested
+- Card and deck functionality
+- Scoring calculations
+- Edge cases (empty hands, single cards, etc.)
+- Reproducible gameplay with seeds
+
+### Deterministic Testing
+For testing and debugging, you can set a specific seed:
+```bash
+# Run with a specific seed for reproducible results
+./balatro -seed=42
+
+# Same seed always produces the same cards
+go test -run TestSetSeed
+```
+
 ## Implementation Notes
 
 - Standard 52-card deck
 - Poker hand evaluation follows traditional rules
 - Ace-low straights (A-2-3-4-5) are supported
 - Royal Flush requires A-K-Q-J-10 of the same suit
-- Random deck shuffling each game
+- Centralized random source with configurable seeding
 
 ## Future Enhancements
 

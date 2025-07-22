@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"flag"
 	"fmt"
 	"math/rand"
 	"os"
@@ -10,6 +11,18 @@ import (
 	"strings"
 	"time"
 )
+
+// Global random source for consistent seeding
+var rng *rand.Rand
+
+func init() {
+	rng = rand.New(rand.NewSource(time.Now().UnixNano()))
+}
+
+// SetSeed allows setting a specific seed for deterministic behavior (useful for testing)
+func SetSeed(seed int64) {
+	rng = rand.New(rand.NewSource(seed))
+}
 
 type Suit int
 
@@ -207,8 +220,7 @@ func NewDeck() []Card {
 }
 
 func ShuffleDeck(deck []Card) {
-	rand.Seed(time.Now().UnixNano())
-	rand.Shuffle(len(deck), func(i, j int) {
+	rng.Shuffle(len(deck), func(i, j int) {
 		deck[i], deck[j] = deck[j], deck[i]
 	})
 }
@@ -312,6 +324,16 @@ func EvaluateHand(hand Hand) (HandType, int, int, int) {
 }
 
 func main() {
+	// Parse command line flags
+	seed := flag.Int64("seed", 0, "Set random seed for reproducible gameplay (0 for random)")
+	flag.Parse()
+
+	// Set seed if provided
+	if *seed != 0 {
+		SetSeed(*seed)
+		fmt.Printf("Using seed: %d\n", *seed)
+	}
+
 	fmt.Println("🃏 Welcome to Balatro CLI! 🃏")
 	fmt.Println("Select up to 5 cards to make your best poker hand!")
 	fmt.Println("Face cards (J, Q, K) = 10 points, Aces = 11 points")
