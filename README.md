@@ -131,6 +131,34 @@ For testing and debugging, you can set a specific seed:
 go test -run TestSetSeed
 ```
 
+## Code Structure
+
+The codebase is organized into focused, modular files:
+
+- **`main.go`** - Entry point and command-line argument parsing
+- **`deck.go`** - Card, Suit, Rank definitions and deck operations
+- **`hands.go`** - Interface-based poker hand evaluation system
+- **`game.go`** - Main game loop, player interaction, and game state
+
+### Interface-Based Hand System
+
+The hand evaluation uses a clean interface-based approach instead of switch statements:
+
+```go
+type HandEvaluator interface {
+    Name() string
+    BaseScore() int
+    Multiplier() int
+    Matches(cards []Card) bool
+    Priority() int
+}
+```
+
+Each poker hand type (Pair, Flush, etc.) implements this interface, making the system:
+- **Extensible**: Easy to add new hand types
+- **Maintainable**: No large switch statements
+- **Testable**: Each hand type can be tested independently
+
 ## Implementation Notes
 
 - Standard 52-card deck
