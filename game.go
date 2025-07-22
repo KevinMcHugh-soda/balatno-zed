@@ -17,6 +17,14 @@ const (
 	InitialCards = 7
 )
 
+// SortMode represents how cards should be displayed
+type SortMode int
+
+const (
+	SortByRank SortMode = iota
+	SortBySuit
+)
+
 // Game represents the current game state
 type Game struct {
 	totalScore        int
@@ -27,6 +35,7 @@ type Game struct {
 	playerCards       []Card
 	scanner           *bufio.Scanner
 	displayToOriginal []int // maps display position (0-based) to original position
+	sortMode          SortMode
 }
 
 // NewGame creates a new game instance
@@ -41,6 +50,7 @@ func NewGame() *Game {
 		deck:         deck,
 		deckIndex:    0,
 		scanner:      bufio.NewScanner(os.Stdin),
+		sortMode:     SortByRank,
 	}
 
 	// Deal initial hand
@@ -72,6 +82,8 @@ func (g *Game) Run() {
 			g.handlePlayAction(params)
 		} else if action == "discard" {
 			g.handleDiscardAction(params)
+		} else if action == "resort" {
+			g.handleResortAction()
 		}
 	}
 
@@ -98,9 +110,17 @@ func (g *Game) showCards() {
 		indexed[i] = indexedCard{card: card, index: i}
 	}
 
-	// Sort by rank
+	// Sort based on current sort mode
 	sort.Slice(indexed, func(i, j int) bool {
-		return indexed[i].card.Rank < indexed[j].card.Rank
+		if g.sortMode == SortByRank {
+			return indexed[i].card.Rank < indexed[j].card.Rank
+		} else {
+			// Sort by suit, then by rank within suit
+			if indexed[i].card.Suit != indexed[j].card.Suit {
+				return indexed[i].card.Suit < indexed[j].card.Suit
+			}
+			return indexed[i].card.Rank < indexed[j].card.Rank
+		}
 	})
 
 	// Update the display-to-original mapping
@@ -109,7 +129,11 @@ func (g *Game) showCards() {
 		g.displayToOriginal[i] = ic.index
 	}
 
-	fmt.Println("Your cards:")
+	sortModeStr := "rank"
+	if g.sortMode == SortBySuit {
+		sortModeStr = "suit"
+	}
+	fmt.Printf("Your cards (sorted by %s):\n", sortModeStr)
 	for i, ic := range indexed {
 		fmt.Printf("%d: %s\n", i+1, ic.card)
 	}
@@ -119,9 +143,9 @@ func (g *Game) showCards() {
 // getPlayerInput reads and parses player input
 func (g *Game) getPlayerInput() (string, []string, bool) {
 	if g.discardsUsed >= MaxDiscards {
-		fmt.Print("(p)lay <cards> or (q)uit: ")
+		fmt.Print("(p)lay <cards>, (r)esort, or (q)uit: ")
 	} else {
-		fmt.Print("(p)lay <cards>, (d)iscard <cards>, or (q)uit: ")
+		fmt.Print("(p)lay <cards>, (d)iscard <cards>, (r)esort, or (q)uit: ")
 	}
 
 	if !g.scanner.Scan() {
@@ -155,6 +179,8 @@ func (g *Game) getPlayerInput() (string, []string, bool) {
 		action = "play"
 	} else if action == "d" {
 		action = "discard"
+	} else if action == "r" {
+		action = "resort"
 	} else if action == "q" {
 		return "", nil, true
 	}
@@ -305,4 +331,16 @@ func removeCards(cards []Card, indices []int) []Card {
 	}
 
 	return result
+}
+
+// handleResortAction toggles the sort mode and redisplays cards
+func (g *Game) handleResortAction() {
+	if g.sortMode == SortByRank {
+		g.sortMode = SortBySuit
+		fmt.Println("Cards now sorted by suit")
+	} else {
+		g.sortMode = SortByRank
+		fmt.Println("Cards now sorted by rank")
+	}
+	fmt.Println()
 }
