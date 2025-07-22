@@ -157,6 +157,33 @@ func (ht HandType) BaseScore() int {
 	}
 }
 
+func (ht HandType) Mult() int {
+	switch ht {
+	case HighCard:
+		return 1
+	case Pair:
+		return 2
+	case TwoPair:
+		return 2
+	case ThreeOfAKind:
+		return 3
+	case Straight:
+		return 4
+	case Flush:
+		return 4
+	case FullHouse:
+		return 4
+	case FourOfAKind:
+		return 7
+	case StraightFlush:
+		return 8
+	case RoyalFlush:
+		return 8
+	default:
+		return 1
+	}
+}
+
 type Hand struct {
 	Cards []Card
 }
@@ -186,9 +213,9 @@ func ShuffleDeck(deck []Card) {
 	})
 }
 
-func EvaluateHand(hand Hand) (HandType, int) {
+func EvaluateHand(hand Hand) (HandType, int, int, int) {
 	if len(hand.Cards) == 0 {
-		return HighCard, 0
+		return HighCard, 0, 0, 0
 	}
 
 	// Sort cards by rank for easier evaluation
@@ -226,6 +253,12 @@ func EvaluateHand(hand Hand) (HandType, int) {
 			cards[2].Rank == Three && cards[3].Rank == Four && cards[4].Rank == Five {
 			isStraight = true
 		}
+
+		// Special case: A-10-J-Q-K straight (high ace) - Royal Flush possibility
+		if !isStraight && len(cards) == 5 && cards[0].Rank == Ace && cards[1].Rank == Ten &&
+			cards[2].Rank == Jack && cards[3].Rank == Queen && cards[4].Rank == King {
+			isStraight = true
+		}
 	}
 
 	// Calculate total card value
@@ -237,8 +270,9 @@ func EvaluateHand(hand Hand) (HandType, int) {
 	// Determine hand type
 	var handType HandType
 
-	// Royal Flush: A-K-Q-J-10 all same suit
-	if isFlush && isStraight && cards[0].Rank == Ten {
+	// Royal Flush: A-10-J-Q-K all same suit (cards are sorted, so A comes first)
+	if isFlush && isStraight && len(cards) == 5 && cards[0].Rank == Ace && cards[1].Rank == Ten &&
+		cards[2].Rank == Jack && cards[3].Rank == Queen && cards[4].Rank == King {
 		handType = RoyalFlush
 	} else if isFlush && isStraight {
 		handType = StraightFlush
@@ -254,16 +288,13 @@ func EvaluateHand(hand Hand) (HandType, int) {
 		}
 		sort.Sort(sort.Reverse(sort.IntSlice(counts)))
 
-		if len(counts) == 1 {
-			// All cards same rank (impossible with standard rules, but just in case)
+		if counts[0] == 4 {
 			handType = FourOfAKind
-		} else if counts[0] == 4 {
-			handType = FourOfAKind
-		} else if counts[0] == 3 && counts[1] == 2 {
+		} else if counts[0] == 3 && len(counts) > 1 && counts[1] == 2 {
 			handType = FullHouse
 		} else if counts[0] == 3 {
 			handType = ThreeOfAKind
-		} else if counts[0] == 2 && counts[1] == 2 {
+		} else if counts[0] == 2 && len(counts) > 1 && counts[1] == 2 {
 			handType = TwoPair
 		} else if counts[0] == 2 {
 			handType = Pair
@@ -272,10 +303,12 @@ func EvaluateHand(hand Hand) (HandType, int) {
 		}
 	}
 
-	// Calculate final score: base score * total card value
-	finalScore := handType.BaseScore() * totalValue
+	// Calculate final score: (base score + card values) * mult
+	baseScore := handType.BaseScore()
+	mult := handType.Mult()
+	finalScore := (baseScore + totalValue) * mult
 
-	return handType, finalScore
+	return handType, finalScore, totalValue, baseScore
 }
 
 func main() {
@@ -306,7 +339,14 @@ func main() {
 		fmt.Println()
 
 		fmt.Print("Select cards for your hand (1-5 cards, enter numbers separated by spaces, or 'quit' to exit): ")
-		scanner.Scan()
+
+		if !scanner.Scan() {
+			if err := scanner.Err(); err != nil {
+				fmt.Println("Error reading input:", err)
+			}
+			break
+		}
+
 		input := strings.TrimSpace(scanner.Text())
 
 		if strings.ToLower(input) == "quit" {
@@ -350,12 +390,13 @@ func main() {
 
 		// Evaluate the hand
 		hand := Hand{Cards: selectedCards}
-		handType, score := EvaluateHand(hand)
+		handType, score, cardValues, baseScore := EvaluateHand(hand)
 
 		fmt.Println()
 		fmt.Printf("Your hand: %s\n", hand)
 		fmt.Printf("Hand type: %s\n", handType)
-		fmt.Printf("Score: %d points\n", score)
+		fmt.Printf("Base Score: %d | Card Values: %d | Mult: %dx\n", baseScore, cardValues, handType.Mult())
+		fmt.Printf("Final Score: (%d + %d) × %d = %d points\n", baseScore, cardValues, handType.Mult(), score)
 		fmt.Println(strings.Repeat("-", 40))
 		fmt.Println()
 	}
