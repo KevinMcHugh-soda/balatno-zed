@@ -19,13 +19,14 @@ const (
 
 // Game represents the current game state
 type Game struct {
-	totalScore   int
-	handsPlayed  int
-	discardsUsed int
-	deck         []Card
-	deckIndex    int
-	playerCards  []Card
-	scanner      *bufio.Scanner
+	totalScore        int
+	handsPlayed       int
+	discardsUsed      int
+	deck              []Card
+	deckIndex         int
+	playerCards       []Card
+	scanner           *bufio.Scanner
+	displayToOriginal []int // maps display position (0-based) to original position
 }
 
 // NewGame creates a new game instance
@@ -102,9 +103,15 @@ func (g *Game) showCards() {
 		return indexed[i].card.Rank < indexed[j].card.Rank
 	})
 
+	// Update the display-to-original mapping
+	g.displayToOriginal = make([]int, len(indexed))
+	for i, ic := range indexed {
+		g.displayToOriginal[i] = ic.index
+	}
+
 	fmt.Println("Your cards:")
-	for _, ic := range indexed {
-		fmt.Printf("%d: %s\n", ic.index+1, ic.card)
+	for i, ic := range indexed {
+		fmt.Printf("%d: %s\n", i+1, ic.card)
 	}
 	fmt.Println()
 }
@@ -112,9 +119,9 @@ func (g *Game) showCards() {
 // getPlayerInput reads and parses player input
 func (g *Game) getPlayerInput() (string, []string, bool) {
 	if g.discardsUsed >= MaxDiscards {
-		fmt.Print("Choose action: 'play <cards>' (or 'p <cards>') to play hand, or 'quit': ")
+		fmt.Print("(p)lay <cards> or (q)uit: ")
 	} else {
-		fmt.Print("Choose action: 'play <cards>' (or 'p <cards>') to play hand, 'discard <cards>' (or 'd <cards>') to discard, or 'quit': ")
+		fmt.Print("(p)lay <cards>, (d)iscard <cards>, or (q)uit: ")
 	}
 
 	if !g.scanner.Scan() {
@@ -148,6 +155,8 @@ func (g *Game) getPlayerInput() (string, []string, bool) {
 		action = "play"
 	} else if action == "d" {
 		action = "discard"
+	} else if action == "q" {
+		return "", nil, true
 	}
 
 	var params []string
@@ -239,13 +248,15 @@ func (g *Game) parseCardSelection(params []string) ([]Card, []int, bool) {
 	var selectedIndices []int
 
 	for _, param := range params {
-		index, err := strconv.Atoi(param)
-		if err != nil || index < 1 || index > len(g.playerCards) {
+		displayIndex, err := strconv.Atoi(param)
+		if err != nil || displayIndex < 1 || displayIndex > len(g.playerCards) {
 			fmt.Printf("Invalid card number: %s\n", param)
 			return nil, nil, false
 		}
-		selectedCards = append(selectedCards, g.playerCards[index-1])
-		selectedIndices = append(selectedIndices, index-1)
+		// Map display position to original position
+		originalIndex := g.displayToOriginal[displayIndex-1]
+		selectedCards = append(selectedCards, g.playerCards[originalIndex])
+		selectedIndices = append(selectedIndices, originalIndex)
 	}
 
 	return selectedCards, selectedIndices, true
