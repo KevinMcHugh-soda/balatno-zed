@@ -4,7 +4,7 @@ A command-line clone of the popular deckbuilding roguelike game Balatro. This im
 
 ## About
 
-Balatro CLI is a simplified version of Balatro that runs in your terminal. Players are dealt 7 cards from a standard 52-card deck and must select up to 5 cards to form the best possible poker hand. Each hand type has a base score and multiplier, and card values are added to create the final score.
+Balatro CLI is a simplified version of Balatro that runs in your terminal. Players face a challenge to score 300 points using only 4 hands and 3 discards. You're dealt 7 cards from a standard 52-card deck and can either play up to 5 cards to form a poker hand, or discard unwanted cards to get new ones. Each hand type has a base score and multiplier, and card values are added to create the final score.
 
 ## How to Run
 
@@ -23,14 +23,20 @@ go run main.go
 
 ## How to Play
 
+**🎯 CHALLENGE: Score 300 points with 4 hands and 3 discards!**
+
 1. You'll be dealt 7 cards from a shuffled deck
-2. Enter the numbers (1-7) of the cards you want to include in your hand
-3. You can select 1-5 cards
-4. The game will evaluate your poker hand and show your score
-5. Type 'quit' to exit
+2. Choose your action:
+   - **`play <cards>`**: Play 1-5 cards as a poker hand (uses one of your 4 hands)
+   - **`discard <cards>`**: Discard unwanted cards and get new ones (uses one of your 3 discards)
+3. The game evaluates your poker hand and adds to your total score
+4. Win by reaching 300 points before running out of hands
+5. Type 'quit' to exit early
 
 ### Example Gameplay
 ```
+🎯 Target: 300 | Current Score: 0 | Hands Left: 4 | Discards Left: 3
+
 Your cards:
 1: A♠
 2: A♦  
@@ -40,11 +46,16 @@ Your cards:
 6: 10♦
 7: 9♣
 
-Select cards for your hand: 1 2 3
+Choose action: 'play <cards>' to play hand, 'discard <cards>' to discard, or 'quit': play 1 2 3
 Your hand: A♠ A♦ K♥
 Hand type: Pair
 Base Score: 10 | Card Values: 32 | Mult: 2x
 Final Score: (10 + 32) × 2 = 84 points
+💰 Total Score: 84/300
+
+Choose action: discard 4 5
+Discarded 2 card(s)
+New cards dealt!
 ```
 
 ## Scoring System
@@ -80,9 +91,11 @@ The final score is calculated using the formula:
 - **Straight Flush**: (100 + 35) × 8 = **1,080 points**
 
 ### Strategic Considerations
-- Sometimes a pair of Aces (84 points) might score higher than a straight with low cards
-- Face cards and Aces significantly boost your card value total
-- Consider both the hand type and the card values when selecting your hand
+- **Resource Management**: You only get 4 hands and 3 discards - use them wisely!
+- **Discard Strategy**: Use discards to get rid of low-value cards and hunt for pairs/straights
+- **Scoring Efficiency**: Sometimes a pair of Aces (84 points) scores higher than a straight with low cards
+- **Card Values**: Face cards and Aces significantly boost your card value total
+- **Risk vs Reward**: Consider both the hand type and card values when deciding to play or discard
 
 ## Testing
 

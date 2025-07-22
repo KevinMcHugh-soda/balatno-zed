@@ -724,6 +724,87 @@ func TestHandTypeUnknown(t *testing.T) {
 	}
 }
 
+func TestRemoveCards(t *testing.T) {
+	// Test removing single card from middle
+	cards := []Card{
+		{Rank: Ace, Suit: Hearts},
+		{Rank: King, Suit: Spades},
+		{Rank: Queen, Suit: Diamonds},
+		{Rank: Jack, Suit: Clubs},
+	}
+
+	result := removeCards(cards, []int{1}) // Remove King
+	expected := []Card{
+		{Rank: Ace, Suit: Hearts},
+		{Rank: Queen, Suit: Diamonds},
+		{Rank: Jack, Suit: Clubs},
+	}
+
+	if len(result) != len(expected) {
+		t.Errorf("removeCards() length = %v, want %v", len(result), len(expected))
+	}
+
+	for i, card := range expected {
+		if result[i] != card {
+			t.Errorf("removeCards() result[%d] = %v, want %v", i, result[i], card)
+		}
+	}
+
+	// Test removing multiple cards
+	result2 := removeCards(cards, []int{0, 2}) // Remove Ace and Queen
+	expected2 := []Card{
+		{Rank: King, Suit: Spades},
+		{Rank: Jack, Suit: Clubs},
+	}
+
+	if len(result2) != len(expected2) {
+		t.Errorf("removeCards(multiple) length = %v, want %v", len(result2), len(expected2))
+	}
+
+	for i, card := range expected2 {
+		if result2[i] != card {
+			t.Errorf("removeCards(multiple) result[%d] = %v, want %v", i, result2[i], card)
+		}
+	}
+
+	// Test removing from empty slice
+	emptyCards := []Card{}
+	result3 := removeCards(emptyCards, []int{0})
+	if len(result3) != 0 {
+		t.Errorf("removeCards(empty) length = %v, want 0", len(result3))
+	}
+
+	// Test removing with invalid indices (should not crash)
+	result4 := removeCards(cards, []int{10, -1})
+	if len(result4) != len(cards) {
+		t.Errorf("removeCards(invalid indices) length = %v, want %v", len(result4), len(cards))
+	}
+
+	// Test removing all cards
+	result5 := removeCards(cards, []int{0, 1, 2, 3})
+	if len(result5) != 0 {
+		t.Errorf("removeCards(all cards) length = %v, want 0", len(result5))
+	}
+
+	// Test removing cards from end
+	result6 := removeCards(cards, []int{3}) // Remove Jack
+	expected6 := []Card{
+		{Rank: Ace, Suit: Hearts},
+		{Rank: King, Suit: Spades},
+		{Rank: Queen, Suit: Diamonds},
+	}
+
+	if len(result6) != len(expected6) {
+		t.Errorf("removeCards(from end) length = %v, want %v", len(result6), len(expected6))
+	}
+
+	for i, card := range expected6 {
+		if result6[i] != card {
+			t.Errorf("removeCards(from end) result[%d] = %v, want %v", i, result6[i], card)
+		}
+	}
+}
+
 func TestReproducibleGameplay(t *testing.T) {
 	// Test that the same seed produces identical game state
 	SetSeed(12345)

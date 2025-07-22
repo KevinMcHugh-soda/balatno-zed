@@ -335,32 +335,45 @@ func main() {
 	}
 
 	fmt.Println("🃏 Welcome to Balatro CLI! 🃏")
-	fmt.Println("Select up to 5 cards to make your best poker hand!")
+	fmt.Println("🎯 CHALLENGE: Score 300 points with 4 hands and 3 discards!")
 	fmt.Println("Face cards (J, Q, K) = 10 points, Aces = 11 points")
 	fmt.Println()
+
+	// Game state
+	const targetScore = 300
+	const maxHands = 4
+	const maxDiscards = 3
+
+	totalScore := 0
+	handsPlayed := 0
+	discardsUsed := 0
 
 	// Create and shuffle deck
 	deck := NewDeck()
 	ShuffleDeck(deck)
+	deckIndex := 0
 
 	// Deal initial hand (7 cards)
 	handSize := 7
-	if len(deck) < handSize {
-		handSize = len(deck)
-	}
-
-	playerCards := deck[:handSize]
+	playerCards := make([]Card, handSize)
+	copy(playerCards, deck[deckIndex:deckIndex+handSize])
+	deckIndex += handSize
 
 	scanner := bufio.NewScanner(os.Stdin)
 
-	for {
+	for handsPlayed < maxHands && totalScore < targetScore {
+		// Show game status
+		fmt.Printf("🎯 Target: %d | Current Score: %d | Hands Left: %d | Discards Left: %d\n",
+			targetScore, totalScore, maxHands-handsPlayed, maxDiscards-discardsUsed)
+		fmt.Println()
+
 		fmt.Println("Your cards:")
 		for i, card := range playerCards {
 			fmt.Printf("%d: %s\n", i+1, card)
 		}
 		fmt.Println()
 
-		fmt.Print("Select cards for your hand (1-5 cards, enter numbers separated by spaces, or 'quit' to exit): ")
+		fmt.Print("Choose action: 'play <cards>' to play hand, 'discard <cards>' to discard, or 'quit': ")
 
 		if !scanner.Scan() {
 			if err := scanner.Err(); err != nil {
@@ -377,49 +390,169 @@ func main() {
 		}
 
 		if input == "" {
-			fmt.Println("Please enter card numbers or 'quit'")
+			fmt.Println("Please enter an action")
 			continue
 		}
 
-		// Parse selected card indices
-		selections := strings.Fields(input)
-		if len(selections) > 5 {
-			fmt.Println("You can only select up to 5 cards!")
+		parts := strings.Fields(input)
+		if len(parts) < 1 {
+			fmt.Println("Please enter 'play <cards>' or 'discard <cards>'")
 			continue
 		}
 
-		var selectedCards []Card
-		valid := true
+		action := strings.ToLower(parts[0])
 
-		for _, sel := range selections {
-			index, err := strconv.Atoi(sel)
-			if err != nil || index < 1 || index > len(playerCards) {
-				fmt.Printf("Invalid card number: %s\n", sel)
-				valid = false
-				break
+		if action == "play" {
+			if len(parts) < 2 {
+				fmt.Println("Please specify cards to play: 'play 1 2 3'")
+				continue
 			}
-			selectedCards = append(selectedCards, playerCards[index-1])
-		}
 
-		if !valid {
+			// Parse selected card indices
+			selections := parts[1:]
+			if len(selections) > 5 {
+				fmt.Println("You can only play up to 5 cards!")
+				continue
+			}
+
+			var selectedCards []Card
+			var selectedIndices []int
+			valid := true
+
+			for _, sel := range selections {
+				index, err := strconv.Atoi(sel)
+				if err != nil || index < 1 || index > len(playerCards) {
+					fmt.Printf("Invalid card number: %s\n", sel)
+					valid = false
+					break
+				}
+				selectedCards = append(selectedCards, playerCards[index-1])
+				selectedIndices = append(selectedIndices, index-1)
+			}
+
+			if !valid {
+				continue
+			}
+
+			if len(selectedCards) == 0 {
+				fmt.Println("Please select at least one card!")
+				continue
+			}
+
+			// Evaluate the hand
+			hand := Hand{Cards: selectedCards}
+			handType, score, cardValues, baseScore := EvaluateHand(hand)
+
+			fmt.Println()
+			fmt.Printf("Your hand: %s\n", hand)
+			fmt.Printf("Hand type: %s\n", handType)
+			fmt.Printf("Base Score: %d | Card Values: %d | Mult: %dx\n", baseScore, cardValues, handType.Mult())
+			fmt.Printf("Final Score: (%d + %d) × %d = %d points\n", baseScore, cardValues, handType.Mult(), score)
+
+			totalScore += score
+			handsPlayed++
+
+			fmt.Printf("💰 Total Score: %d/%d\n", totalScore, targetScore)
+			fmt.Println(strings.Repeat("-", 50))
+			fmt.Println()
+
+			// Remove played cards and deal new ones
+			playerCards = removeCards(playerCards, selectedIndices)
+			newCardsNeeded := len(selectedCards)
+
+			// Deal new cards if available
+			if deckIndex+newCardsNeeded <= len(deck) {
+				for i := 0; i < newCardsNeeded; i++ {
+					playerCards = append(playerCards, deck[deckIndex])
+					deckIndex++
+				}
+			}
+
+		} else if action == "discard" {
+			if discardsUsed >= maxDiscards {
+				fmt.Println("No discards remaining!")
+				continue
+			}
+
+			if len(parts) < 2 {
+				fmt.Println("Please specify cards to discard: 'discard 1 2'")
+				continue
+			}
+
+			// Parse selected card indices
+			selections := parts[1:]
+			var selectedIndices []int
+			valid := true
+
+			for _, sel := range selections {
+				index, err := strconv.Atoi(sel)
+				if err != nil || index < 1 || index > len(playerCards) {
+					fmt.Printf("Invalid card number: %s\n", sel)
+					valid = false
+					break
+				}
+				selectedIndices = append(selectedIndices, index-1)
+			}
+
+			if !valid {
+				continue
+			}
+
+			if len(selectedIndices) == 0 {
+				fmt.Println("Please select at least one card!")
+				continue
+			}
+
+			fmt.Printf("Discarded %d card(s)\n", len(selectedIndices))
+			discardsUsed++
+
+			// Remove discarded cards and deal new ones
+			playerCards = removeCards(playerCards, selectedIndices)
+			newCardsNeeded := len(selectedIndices)
+
+			// Deal new cards if available
+			if deckIndex+newCardsNeeded <= len(deck) {
+				for i := 0; i < newCardsNeeded; i++ {
+					playerCards = append(playerCards, deck[deckIndex])
+					deckIndex++
+				}
+			}
+
+			fmt.Println("New cards dealt!")
+			fmt.Println()
+
+		} else {
+			fmt.Println("Invalid action. Use 'play <cards>' or 'discard <cards>'")
 			continue
 		}
-
-		if len(selectedCards) == 0 {
-			fmt.Println("Please select at least one card!")
-			continue
-		}
-
-		// Evaluate the hand
-		hand := Hand{Cards: selectedCards}
-		handType, score, cardValues, baseScore := EvaluateHand(hand)
-
-		fmt.Println()
-		fmt.Printf("Your hand: %s\n", hand)
-		fmt.Printf("Hand type: %s\n", handType)
-		fmt.Printf("Base Score: %d | Card Values: %d | Mult: %dx\n", baseScore, cardValues, handType.Mult())
-		fmt.Printf("Final Score: (%d + %d) × %d = %d points\n", baseScore, cardValues, handType.Mult(), score)
-		fmt.Println(strings.Repeat("-", 40))
-		fmt.Println()
 	}
+
+	// Game over - show results
+	fmt.Println(strings.Repeat("=", 50))
+	if totalScore >= targetScore {
+		fmt.Println("🎉 VICTORY! You reached the target score!")
+	} else {
+		fmt.Println("💀 DEFEAT! You ran out of hands.")
+	}
+	fmt.Printf("Final Score: %d/%d\n", totalScore, targetScore)
+	fmt.Printf("Hands Played: %d/%d\n", handsPlayed, maxHands)
+	fmt.Printf("Discards Used: %d/%d\n", discardsUsed, maxDiscards)
+	fmt.Println(strings.Repeat("=", 50))
+}
+
+// removeCards removes cards at specified indices and returns the new slice
+func removeCards(cards []Card, indices []int) []Card {
+	// Sort indices in descending order to remove from end first
+	sort.Sort(sort.Reverse(sort.IntSlice(indices)))
+
+	result := make([]Card, len(cards))
+	copy(result, cards)
+
+	for _, index := range indices {
+		if index >= 0 && index < len(result) {
+			result = append(result[:index], result[index+1:]...)
+		}
+	}
+
+	return result
 }
