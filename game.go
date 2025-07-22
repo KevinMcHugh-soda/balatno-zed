@@ -95,7 +95,11 @@ func (g *Game) showCards() {
 
 // getPlayerInput reads and parses player input
 func (g *Game) getPlayerInput() (string, []string, bool) {
-	fmt.Print("Choose action: 'play <cards>' to play hand, 'discard <cards>' to discard, or 'quit': ")
+	if g.discardsUsed >= MaxDiscards {
+		fmt.Print("Choose action: 'play <cards>' to play hand, or 'quit': ")
+	} else {
+		fmt.Print("Choose action: 'play <cards>' to play hand, 'discard <cards>' to discard, or 'quit': ")
+	}
 
 	if !g.scanner.Scan() {
 		if err := g.scanner.Err(); err != nil {
