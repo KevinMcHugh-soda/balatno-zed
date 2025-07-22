@@ -1,0 +1,362 @@
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"math/rand"
+	"os"
+	"sort"
+	"strconv"
+	"strings"
+	"time"
+)
+
+type Suit int
+
+const (
+	Hearts Suit = iota
+	Diamonds
+	Clubs
+	Spades
+)
+
+func (s Suit) String() string {
+	switch s {
+	case Hearts:
+		return "♥"
+	case Diamonds:
+		return "♦"
+	case Clubs:
+		return "♣"
+	case Spades:
+		return "♠"
+	default:
+		return "?"
+	}
+}
+
+type Rank int
+
+const (
+	Ace Rank = iota + 1
+	Two
+	Three
+	Four
+	Five
+	Six
+	Seven
+	Eight
+	Nine
+	Ten
+	Jack
+	Queen
+	King
+)
+
+func (r Rank) String() string {
+	switch r {
+	case Ace:
+		return "A"
+	case Jack:
+		return "J"
+	case Queen:
+		return "Q"
+	case King:
+		return "K"
+	default:
+		return strconv.Itoa(int(r))
+	}
+}
+
+func (r Rank) Value() int {
+	switch r {
+	case Ace:
+		return 11
+	case Jack, Queen, King:
+		return 10
+	default:
+		return int(r)
+	}
+}
+
+type Card struct {
+	Suit Suit
+	Rank Rank
+}
+
+func (c Card) String() string {
+	return fmt.Sprintf("%s%s", c.Rank, c.Suit)
+}
+
+type HandType int
+
+const (
+	HighCard HandType = iota
+	Pair
+	TwoPair
+	ThreeOfAKind
+	Straight
+	Flush
+	FullHouse
+	FourOfAKind
+	StraightFlush
+	RoyalFlush
+)
+
+func (ht HandType) String() string {
+	switch ht {
+	case HighCard:
+		return "High Card"
+	case Pair:
+		return "Pair"
+	case TwoPair:
+		return "Two Pair"
+	case ThreeOfAKind:
+		return "Three of a Kind"
+	case Straight:
+		return "Straight"
+	case Flush:
+		return "Flush"
+	case FullHouse:
+		return "Full House"
+	case FourOfAKind:
+		return "Four of a Kind"
+	case StraightFlush:
+		return "Straight Flush"
+	case RoyalFlush:
+		return "Royal Flush"
+	default:
+		return "Unknown"
+	}
+}
+
+func (ht HandType) BaseScore() int {
+	switch ht {
+	case HighCard:
+		return 5
+	case Pair:
+		return 10
+	case TwoPair:
+		return 20
+	case ThreeOfAKind:
+		return 30
+	case Straight:
+		return 30
+	case Flush:
+		return 35
+	case FullHouse:
+		return 40
+	case FourOfAKind:
+		return 60
+	case StraightFlush:
+		return 100
+	case RoyalFlush:
+		return 100
+	default:
+		return 0
+	}
+}
+
+type Hand struct {
+	Cards []Card
+}
+
+func (h Hand) String() string {
+	var cards []string
+	for _, card := range h.Cards {
+		cards = append(cards, card.String())
+	}
+	return strings.Join(cards, " ")
+}
+
+func NewDeck() []Card {
+	var deck []Card
+	for suit := Hearts; suit <= Spades; suit++ {
+		for rank := Ace; rank <= King; rank++ {
+			deck = append(deck, Card{Suit: suit, Rank: rank})
+		}
+	}
+	return deck
+}
+
+func ShuffleDeck(deck []Card) {
+	rand.Seed(time.Now().UnixNano())
+	rand.Shuffle(len(deck), func(i, j int) {
+		deck[i], deck[j] = deck[j], deck[i]
+	})
+}
+
+func EvaluateHand(hand Hand) (HandType, int) {
+	if len(hand.Cards) == 0 {
+		return HighCard, 0
+	}
+
+	// Sort cards by rank for easier evaluation
+	cards := make([]Card, len(hand.Cards))
+	copy(cards, hand.Cards)
+	sort.Slice(cards, func(i, j int) bool {
+		return cards[i].Rank < cards[j].Rank
+	})
+
+	// Count ranks and suits
+	rankCounts := make(map[Rank]int)
+	suitCounts := make(map[Suit]int)
+
+	for _, card := range cards {
+		rankCounts[card.Rank]++
+		suitCounts[card.Suit]++
+	}
+
+	// Check for flush
+	isFlush := len(suitCounts) == 1 && len(cards) == 5
+
+	// Check for straight
+	isStraight := false
+	if len(cards) == 5 {
+		isStraight = true
+		for i := 1; i < len(cards); i++ {
+			if cards[i].Rank != cards[i-1].Rank+1 {
+				isStraight = false
+				break
+			}
+		}
+
+		// Special case: A-2-3-4-5 straight (wheel)
+		if !isStraight && cards[0].Rank == Ace && cards[1].Rank == Two &&
+			cards[2].Rank == Three && cards[3].Rank == Four && cards[4].Rank == Five {
+			isStraight = true
+		}
+	}
+
+	// Calculate total card value
+	totalValue := 0
+	for _, card := range cards {
+		totalValue += card.Rank.Value()
+	}
+
+	// Determine hand type
+	var handType HandType
+
+	// Royal Flush: A-K-Q-J-10 all same suit
+	if isFlush && isStraight && cards[0].Rank == Ten {
+		handType = RoyalFlush
+	} else if isFlush && isStraight {
+		handType = StraightFlush
+	} else if isFlush {
+		handType = Flush
+	} else if isStraight {
+		handType = Straight
+	} else {
+		// Check for pairs, three of a kind, etc.
+		var counts []int
+		for _, count := range rankCounts {
+			counts = append(counts, count)
+		}
+		sort.Sort(sort.Reverse(sort.IntSlice(counts)))
+
+		if len(counts) == 1 {
+			// All cards same rank (impossible with standard rules, but just in case)
+			handType = FourOfAKind
+		} else if counts[0] == 4 {
+			handType = FourOfAKind
+		} else if counts[0] == 3 && counts[1] == 2 {
+			handType = FullHouse
+		} else if counts[0] == 3 {
+			handType = ThreeOfAKind
+		} else if counts[0] == 2 && counts[1] == 2 {
+			handType = TwoPair
+		} else if counts[0] == 2 {
+			handType = Pair
+		} else {
+			handType = HighCard
+		}
+	}
+
+	// Calculate final score: base score * total card value
+	finalScore := handType.BaseScore() * totalValue
+
+	return handType, finalScore
+}
+
+func main() {
+	fmt.Println("🃏 Welcome to Balatro CLI! 🃏")
+	fmt.Println("Select up to 5 cards to make your best poker hand!")
+	fmt.Println("Face cards (J, Q, K) = 10 points, Aces = 11 points")
+	fmt.Println()
+
+	// Create and shuffle deck
+	deck := NewDeck()
+	ShuffleDeck(deck)
+
+	// Deal initial hand (7 cards)
+	handSize := 7
+	if len(deck) < handSize {
+		handSize = len(deck)
+	}
+
+	playerCards := deck[:handSize]
+
+	scanner := bufio.NewScanner(os.Stdin)
+
+	for {
+		fmt.Println("Your cards:")
+		for i, card := range playerCards {
+			fmt.Printf("%d: %s\n", i+1, card)
+		}
+		fmt.Println()
+
+		fmt.Print("Select cards for your hand (1-5 cards, enter numbers separated by spaces, or 'quit' to exit): ")
+		scanner.Scan()
+		input := strings.TrimSpace(scanner.Text())
+
+		if strings.ToLower(input) == "quit" {
+			fmt.Println("Thanks for playing!")
+			break
+		}
+
+		if input == "" {
+			fmt.Println("Please enter card numbers or 'quit'")
+			continue
+		}
+
+		// Parse selected card indices
+		selections := strings.Fields(input)
+		if len(selections) > 5 {
+			fmt.Println("You can only select up to 5 cards!")
+			continue
+		}
+
+		var selectedCards []Card
+		valid := true
+
+		for _, sel := range selections {
+			index, err := strconv.Atoi(sel)
+			if err != nil || index < 1 || index > len(playerCards) {
+				fmt.Printf("Invalid card number: %s\n", sel)
+				valid = false
+				break
+			}
+			selectedCards = append(selectedCards, playerCards[index-1])
+		}
+
+		if !valid {
+			continue
+		}
+
+		if len(selectedCards) == 0 {
+			fmt.Println("Please select at least one card!")
+			continue
+		}
+
+		// Evaluate the hand
+		hand := Hand{Cards: selectedCards}
+		handType, score := EvaluateHand(hand)
+
+		fmt.Println()
+		fmt.Printf("Your hand: %s\n", hand)
+		fmt.Printf("Hand type: %s\n", handType)
+		fmt.Printf("Score: %d points\n", score)
+		fmt.Println(strings.Repeat("-", 40))
+		fmt.Println()
+	}
+}
