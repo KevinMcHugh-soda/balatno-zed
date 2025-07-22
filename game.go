@@ -84,11 +84,27 @@ func (g *Game) showGameStatus() {
 	fmt.Println()
 }
 
-// showCards displays the player's current cards
+// showCards displays the player's current cards sorted by rank
 func (g *Game) showCards() {
-	fmt.Println("Your cards:")
+	// Create a sorted copy of cards with their original indices
+	type indexedCard struct {
+		card  Card
+		index int
+	}
+
+	indexed := make([]indexedCard, len(g.playerCards))
 	for i, card := range g.playerCards {
-		fmt.Printf("%d: %s\n", i+1, card)
+		indexed[i] = indexedCard{card: card, index: i}
+	}
+
+	// Sort by rank
+	sort.Slice(indexed, func(i, j int) bool {
+		return indexed[i].card.Rank < indexed[j].card.Rank
+	})
+
+	fmt.Println("Your cards:")
+	for _, ic := range indexed {
+		fmt.Printf("%d: %s\n", ic.index+1, ic.card)
 	}
 	fmt.Println()
 }
@@ -96,9 +112,9 @@ func (g *Game) showCards() {
 // getPlayerInput reads and parses player input
 func (g *Game) getPlayerInput() (string, []string, bool) {
 	if g.discardsUsed >= MaxDiscards {
-		fmt.Print("Choose action: 'play <cards>' to play hand, or 'quit': ")
+		fmt.Print("Choose action: 'play <cards>' (or 'p <cards>') to play hand, or 'quit': ")
 	} else {
-		fmt.Print("Choose action: 'play <cards>' to play hand, 'discard <cards>' to discard, or 'quit': ")
+		fmt.Print("Choose action: 'play <cards>' (or 'p <cards>') to play hand, 'discard <cards>' (or 'd <cards>') to discard, or 'quit': ")
 	}
 
 	if !g.scanner.Scan() {
@@ -126,6 +142,14 @@ func (g *Game) getPlayerInput() (string, []string, bool) {
 	}
 
 	action := strings.ToLower(parts[0])
+
+	// Support abbreviated commands
+	if action == "p" {
+		action = "play"
+	} else if action == "d" {
+		action = "discard"
+	}
+
 	var params []string
 	if len(parts) > 1 {
 		params = parts[1:]
