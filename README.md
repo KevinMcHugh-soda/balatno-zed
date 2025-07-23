@@ -1,16 +1,16 @@
 # Balatro CLI
 
-A command-line clone of the popular deckbuilding roguelike game Balatro. This implementation focuses on the core poker hand evaluation and scoring mechanics.
+A command-line clone of the popular deckbuilding roguelike game Balatro. This implementation focuses on the core poker hand evaluation and scoring mechanics with authentic Ante/Blind progression.
 
 ## About
 
-Balatro CLI is a simplified version of Balatro that runs in your terminal. Players face a challenge to score 300 points using only 4 hands and 3 discards. You're dealt 7 cards from a standard 52-card deck and can either play up to 5 cards to form a poker hand, or discard unwanted cards to get new ones. Each hand type has a base score and multiplier, and card values are added to create the final score.
+Balatro CLI is a faithful recreation of Balatro's core progression system that runs in your terminal. Players must conquer 8 Antes, each containing 3 increasingly difficult Blinds: Small Blind, Big Blind, and Boss Blind. You're dealt 7 cards from a standard 52-card deck and can either play up to 5 cards to form a poker hand, or discard unwanted cards to get new ones. Each hand type has a base score and multiplier, and card values are added to create the final score.
 
 ## How to Run
 
 ```bash
 # Build the game
-go build -o balatro main.go
+go build -o balatro .
 
 # Run the game
 ./balatro
@@ -18,26 +18,45 @@ go build -o balatro main.go
 
 Or run directly with Go:
 ```bash
-go run main.go
+go run .
+```
+
+For reproducible gameplay:
+```bash
+# Use a specific seed
+go run . -seed 42
 ```
 
 ## How to Play
 
-**🎯 CHALLENGE: Score 300 points with 4 hands and 3 discards!**
+**🎯 CHALLENGE: Progress through 8 Antes, each with 3 Blinds!**
 
-1. You'll be dealt 7 cards from a shuffled deck
-2. Choose your action:
+### Game Structure
+- **8 Antes** total to complete the game
+- Each Ante contains **3 Blinds** in sequence:
+  - 🔸 **Small Blind** - Base difficulty
+  - 🔶 **Big Blind** - 1.5x harder than Small Blind  
+  - 💀 **Boss Blind** - 2x harder than Small Blind (special rules coming soon!)
+
+### Each Blind Challenge
+1. You get **4 hands** and **3 discards** to reach the target score
+2. You'll be dealt 7 cards from a shuffled deck
+3. Choose your action:
    - **`play <cards>`**: Play 1-5 cards as a poker hand (uses one of your 4 hands)
    - **`discard <cards>`**: Discard unwanted cards and get new ones (uses one of your 3 discards)
-3. The game evaluates your poker hand and adds to your total score
-4. Win by reaching 300 points before running out of hands
-5. Type 'quit' to exit early
+   - **`resort`**: Toggle card sorting between rank and suit
+4. The game evaluates your poker hand and adds to your total score
+5. Beat the blind by reaching the target score before running out of hands
+6. Complete all 3 blinds to advance to the next Ante
+7. Type `quit` to exit early
 
 ### Example Gameplay
 ```
-🎯 Target: 300 | Current Score: 0 | Hands Left: 4 | Discards Left: 3
+🔸 Ante 1 - Small Blind
+🎯 Target: 300 | Score: 0 [░░░░░░░░░░░░░░░░░░░░] (0.0%)
+🎴 Hands Left: 4 | 🗑️  Discards Left: 3
 
-Your cards:
+Your cards (sorted by rank):
 1: A♠
 2: A♦  
 3: K♥
@@ -46,17 +65,35 @@ Your cards:
 6: 10♦
 7: 9♣
 
-Choose action: 'play <cards>' to play hand, 'discard <cards>' to discard, or 'quit': play 1 2 3
+(p)lay <cards>, (d)iscard <cards>, (r)esort, or (q)uit: play 1 2 3
+
 Your hand: A♠ A♦ K♥
 Hand type: Pair
 Base Score: 10 | Card Values: 32 | Mult: 2x
 Final Score: (10 + 32) × 2 = 84 points
 💰 Total Score: 84/300
 
-Choose action: discard 4 5
-Discarded 2 card(s)
-New cards dealt!
+🔸 Ante 1 - Small Blind
+🎯 Target: 300 | Score: 84 [█████░░░░░░░░░░░░░░░] (28.0%)
+🎴 Hands Left: 3 | 🗑️  Discards Left: 3
 ```
+
+## Blind Requirements
+
+The difficulty scales progressively through each Ante:
+
+| Ante | Small Blind | Big Blind | Boss Blind |
+|------|-------------|-----------|------------|
+| 1    | 300         | 450       | 600        |
+| 2    | 375         | 562       | 750        |
+| 3    | 450         | 675       | 900        |
+| 4    | 525         | 787       | 1050       |
+| 5    | 600         | 900       | 1200       |
+| 6    | 675         | 1012      | 1350       |
+| 7    | 750         | 1125      | 1500       |
+| 8    | 825         | 1237      | 1650       |
+
+**Formula**: Base requirement increases by 75 points per Ante, with Big Blind = 1.5x Small Blind and Boss Blind = 2x Small Blind.
 
 ## Scoring System
 
@@ -83,52 +120,73 @@ The final score is calculated using the formula:
 | Straight Flush | 100 | 8x | 5♥ 6♥ 7♥ 8♥ 9♥ |
 | Royal Flush | 100 | 8x | 10♥ J♥ Q♥ K♥ A♥ |
 
-## Examples
+## Victory Celebrations
 
-### High-Value Hands
-- **Royal Flush with A♥ K♥ Q♥ J♥ 10♥**: (100 + 51) × 8 = **1,208 points**
-- **Four Aces**: (60 + 44) × 7 = **728 points**
-- **Straight Flush**: (100 + 35) × 8 = **1,080 points**
+Each blind type has unique victory celebrations:
 
-### Strategic Considerations
-- **Resource Management**: You only get 4 hands and 3 discards - use them wisely!
-- **Discard Strategy**: Use discards to get rid of low-value cards and hunt for pairs/straights
-- **Scoring Efficiency**: Sometimes a pair of Aces (84 points) scores higher than a straight with low cards
-- **Card Values**: Face cards and Aces significantly boost your card value total
-- **Risk vs Reward**: Consider both the hand type and card values when deciding to play or discard
+- **🔸 Small Blind**: Sparkling celebration, advance to Big Blind
+- **🔶 Big Blind**: Lightning celebration, prepare for Boss Blind  
+- **💀 Boss Blind**: Epic fireworks celebration, Ante conquered!
+
+Complete all 8 Antes to achieve **ULTIMATE VICTORY** and become a true Balatro master!
+
+## Strategic Considerations
+
+### Early Antes (1-3)
+- Focus on consistent scoring with pairs and two pairs
+- Use discards to hunt for face cards and Aces
+- Small Blinds are forgiving - don't waste high-value hands
+
+### Mid Antes (4-6)  
+- Start prioritizing higher-scoring hands (straights, flushes)
+- Card value management becomes crucial
+- Big Blinds require 800+ point hands
+
+### Late Antes (7-8)
+- Boss Blinds demand 1500+ points - you need premium hands
+- Four of a Kind, Straight Flush, or Royal Flush may be necessary
+- Resource management is critical - plan your 4 hands carefully
+
+### General Tips
+- **Resource Management**: You only get 4 hands and 3 discards per blind
+- **Progressive Difficulty**: Each Ante gets significantly harder
+- **Discard Strategy**: Early discards to hunt for pairs/straights in easier blinds
+- **Scoring Efficiency**: A pair of Aces (84 points) can beat low-card straights
+- **Card Values**: Face cards and Aces significantly boost your totals
+- **Boss Blind Prep**: Save your best hands for Boss Blinds when possible
 
 ## Testing
 
-The game includes comprehensive tests covering all poker hand types and edge cases.
+The game includes comprehensive tests covering the Ante/Blind system and poker evaluation.
 
 ### Running Tests
 ```bash
 # Run all tests
 go test
 
-# Run tests with verbose output
+# Run tests with verbose output  
 go test -v
 
-# Check test coverage
-go test -cover
+# Run specific test suites
+go test -v blind_test.go game.go deck.go hands.go
 ```
 
 ### Test Coverage
-- **66%+ statement coverage**
-- All 10 poker hand types tested
-- Card and deck functionality
-- Scoring calculations
-- Edge cases (empty hands, single cards, etc.)
-- Reproducible gameplay with seeds
+- **Ante/Blind progression system**
+- **Blind requirement calculations**
+- **All 10 poker hand types**
+- **Card and deck functionality** 
+- **Scoring calculations**
+- **State reset between blinds**
+- **Victory and defeat conditions**
 
 ### Deterministic Testing
-For testing and debugging, you can set a specific seed:
 ```bash
-# Run with a specific seed for reproducible results
+# Reproducible gameplay for testing
 ./balatro -seed=42
 
-# Same seed always produces the same cards
-go test -run TestSetSeed
+# Demo progression through blinds
+./demo_progression.sh
 ```
 
 ## Code Structure
@@ -136,46 +194,72 @@ go test -run TestSetSeed
 The codebase is organized into focused, modular files:
 
 - **`main.go`** - Entry point and command-line argument parsing
-- **`deck.go`** - Card, Suit, Rank definitions and deck operations
+- **`deck.go`** - Card, Suit, Rank definitions and deck operations  
 - **`hands.go`** - Interface-based poker hand evaluation system
-- **`game.go`** - Main game loop, player interaction, and game state
+- **`game.go`** - Ante/Blind progression, game loop, and player interaction
+
+### Ante/Blind System
+
+The progression system includes:
+
+```go
+type BlindType int
+const (
+    SmallBlind BlindType = iota
+    BigBlind  
+    BossBlind
+)
+
+// Calculates score requirements
+func GetBlindRequirement(ante int, blindType BlindType) int
+
+// Handles blind completion and advancement
+func (g *Game) handleBlindCompletion()
+```
 
 ### Interface-Based Hand System
 
-The hand evaluation uses a clean interface-based approach instead of switch statements:
+Clean interface-based poker evaluation:
 
 ```go
 type HandEvaluator interface {
     Name() string
-    BaseScore() int
+    BaseScore() int  
     Multiplier() int
     Matches(cards []Card) bool
     Priority() int
 }
 ```
 
-Each poker hand type (Pair, Flush, etc.) implements this interface, making the system:
-- **Extensible**: Easy to add new hand types
-- **Maintainable**: No large switch statements
-- **Testable**: Each hand type can be tested independently
+## Visual Features
+
+- **📊 Progress Bars**: Visual score progress with `█` and `░` characters
+- **🎭 Blind Indicators**: Unique emojis for each blind type
+- **🎆 Celebrations**: Escalating victory animations 
+- **📍 Clear Status**: Ante, blind type, and requirements always visible
+- **🎨 Colorful Output**: Rich terminal formatting for better UX
 
 ## Implementation Notes
 
-- Standard 52-card deck
-- Poker hand evaluation follows traditional rules
-- Ace-low straights (A-2-3-4-5) are supported
-- Royal Flush requires A-K-Q-J-10 of the same suit
+- Standard 52-card deck with proper shuffling
+- Authentic Balatro progression scaling
+- State resets between blinds (fresh hand, restored resources)
+- Interface-based design for extensibility
+- Comprehensive error handling and input validation
 - Centralized random source with configurable seeding
 
 ## Future Enhancements
 
-This is a basic implementation focusing on core mechanics. The full Balatro game includes:
-- Jokers that modify scoring
-- Multiple rounds and blinds
-- Shop system
-- Card modifications and enhancements
-- Boss blinds with special rules
+This implementation focuses on core Ante/Blind progression. The full Balatro experience includes:
+
+- **Boss Blind Effects**: Special rules and constraints for Boss Blinds
+- **Jokers**: Game-changing modifiers and scoring bonuses
+- **Shop System**: Buy and sell cards, jokers, and upgrades
+- **Card Enhancements**: Foil, holographic, and other card modifications
+- **Tarot Cards**: One-time powerful effects
+- **Planet Cards**: Upgrade specific hand types
+- **Stakes**: Higher difficulty modes with additional constraints
 
 ---
 
-*Built with Go. Inspired by LocalThunk's Balatro.*
+*Built with Go. Faithfully recreating LocalThunk's Balatro progression system.*

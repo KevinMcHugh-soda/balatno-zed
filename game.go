@@ -11,11 +11,61 @@ import (
 
 // Game constants
 const (
-	TargetScore  = 300
 	MaxHands     = 4
 	MaxDiscards  = 3
 	InitialCards = 7
+	MaxAntes     = 8
 )
+
+// BlindType represents the type of blind being played
+type BlindType int
+
+const (
+	SmallBlind BlindType = iota
+	BigBlind
+	BossBlind
+)
+
+func (bt BlindType) String() string {
+	switch bt {
+	case SmallBlind:
+		return "Small Blind"
+	case BigBlind:
+		return "Big Blind"
+	case BossBlind:
+		return "Boss Blind"
+	default:
+		return "Unknown"
+	}
+}
+
+// Blind represents a single blind challenge
+type Blind struct {
+	Type        BlindType
+	TargetScore int
+	Name        string
+	Description string
+}
+
+// GetBlindRequirement calculates the score requirement for a blind
+func GetBlindRequirement(ante int, blindType BlindType) int {
+	base := 300
+
+	// Increase base requirement each ante
+	requirement := base + (ante-1)*75
+
+	// Adjust based on blind type
+	switch blindType {
+	case SmallBlind:
+		return requirement
+	case BigBlind:
+		return int(float64(requirement) * 1.5)
+	case BossBlind:
+		return requirement * 2
+	default:
+		return requirement
+	}
+}
 
 // SortMode represents how cards should be displayed
 type SortMode int
@@ -36,6 +86,9 @@ type Game struct {
 	scanner           *bufio.Scanner
 	displayToOriginal []int // maps display position (0-based) to original position
 	sortMode          SortMode
+	currentAnte       int
+	currentBlind      BlindType
+	currentTarget     int
 }
 
 // NewGame creates a new game instance
@@ -51,7 +104,12 @@ func NewGame() *Game {
 		deckIndex:    0,
 		scanner:      bufio.NewScanner(os.Stdin),
 		sortMode:     SortByRank,
+		currentAnte:  1,
+		currentBlind: SmallBlind,
 	}
+
+	// Set initial target
+	game.currentTarget = GetBlindRequirement(game.currentAnte, game.currentBlind)
 
 	// Deal initial hand
 	game.playerCards = make([]Card, InitialCards)
@@ -64,36 +122,88 @@ func NewGame() *Game {
 // Run starts the main game loop
 func (g *Game) Run() {
 	fmt.Println("🃏 Welcome to Balatro CLI! 🃏")
-	fmt.Println("🎯 CHALLENGE: Score 300 points with 4 hands and 3 discards!")
+	fmt.Println("🎯 CHALLENGE: Progress through 8 Antes, each with 3 Blinds!")
+	fmt.Println("Each Ante: Small Blind → Big Blind → Boss Blind")
 	fmt.Println("Face cards (J, Q, K) = 10 points, Aces = 11 points")
 	fmt.Println()
 
-	for g.handsPlayed < MaxHands && g.totalScore < TargetScore {
-		g.showGameStatus()
-		g.showCards()
+	gameRunning := true
+	for gameRunning && g.currentAnte <= MaxAntes {
+		for g.handsPlayed < MaxHands && g.totalScore < g.currentTarget {
+			g.showGameStatus()
+			g.showCards()
 
-		action, params, quit := g.getPlayerInput()
-		if quit {
-			fmt.Println("Thanks for playing!")
+			action, params, quit := g.getPlayerInput()
+			if quit {
+				fmt.Println("Thanks for playing!")
+				gameRunning = false
+				break
+			}
+
+			if action == "play" {
+				g.handlePlayAction(params)
+			} else if action == "discard" {
+				g.handleDiscardAction(params)
+			} else if action == "resort" {
+				g.handleResortAction()
+			}
+		}
+
+		if !gameRunning {
 			break
 		}
 
-		if action == "play" {
-			g.handlePlayAction(params)
-		} else if action == "discard" {
-			g.handleDiscardAction(params)
-		} else if action == "resort" {
-			g.handleResortAction()
+		// Check if blind was completed
+		if g.totalScore >= g.currentTarget {
+			g.handleBlindCompletion()
+		} else {
+			// Failed to beat the blind
+			g.showGameResults()
+			break
 		}
 	}
 
-	g.showGameResults()
+	if gameRunning && g.currentAnte > MaxAntes {
+		g.showVictoryResults()
+	}
 }
 
 // showGameStatus displays the current game state
 func (g *Game) showGameStatus() {
-	fmt.Printf("🎯 Target: %d | Current Score: %d | Hands Left: %d | Discards Left: %d\n",
-		TargetScore, g.totalScore, MaxHands-g.handsPlayed, MaxDiscards-g.discardsUsed)
+	// Create visual progress bar for score
+	progress := float64(g.totalScore) / float64(g.currentTarget)
+	if progress > 1.0 {
+		progress = 1.0
+	}
+	progressWidth := 20
+	filled := int(progress * float64(progressWidth))
+
+	progressBar := "["
+	for i := 0; i < progressWidth; i++ {
+		if i < filled {
+			progressBar += "█"
+		} else {
+			progressBar += "░"
+		}
+	}
+	progressBar += "]"
+
+	// Blind type emojis
+	blindEmoji := ""
+	switch g.currentBlind {
+	case SmallBlind:
+		blindEmoji = "🔸"
+	case BigBlind:
+		blindEmoji = "🔶"
+	case BossBlind:
+		blindEmoji = "💀"
+	}
+
+	fmt.Printf("%s Ante %d - %s\n", blindEmoji, g.currentAnte, g.currentBlind)
+	fmt.Printf("🎯 Target: %d | Score: %d %s (%.1f%%)\n",
+		g.currentTarget, g.totalScore, progressBar, progress*100)
+	fmt.Printf("🎴 Hands Left: %d | 🗑️  Discards Left: %d\n",
+		MaxHands-g.handsPlayed, MaxDiscards-g.discardsUsed)
 	fmt.Println()
 }
 
@@ -228,7 +338,7 @@ func (g *Game) handlePlayAction(params []string) {
 	g.totalScore += score
 	g.handsPlayed++
 
-	fmt.Printf("💰 Total Score: %d/%d\n", g.totalScore, TargetScore)
+	fmt.Printf("💰 Total Score: %d/%d\n", g.totalScore, g.currentTarget)
 	fmt.Println(strings.Repeat("-", 50))
 	fmt.Println()
 
@@ -302,18 +412,102 @@ func (g *Game) removeAndDealCards(selectedIndices []int) {
 	}
 }
 
-// showGameResults displays the final game results
+// handleBlindCompletion handles completing a blind and advancing to the next
+func (g *Game) handleBlindCompletion() {
+	// Different celebrations for different blind types
+	switch g.currentBlind {
+	case SmallBlind:
+		fmt.Println(strings.Repeat("=", 60))
+		fmt.Println("🔸 SMALL BLIND DEFEATED! 🔸")
+		fmt.Printf("    ✨ Score: %d/%d ✨\n", g.totalScore, g.currentTarget)
+		fmt.Println("   🎯 Advancing to Big Blind...")
+		fmt.Println(strings.Repeat("=", 60))
+	case BigBlind:
+		fmt.Println(strings.Repeat("=", 60))
+		fmt.Println("🔶 BIG BLIND CRUSHED! 🔶")
+		fmt.Printf("    ⚡ Score: %d/%d ⚡\n", g.totalScore, g.currentTarget)
+		fmt.Println("   💀 Prepare for the Boss Blind...")
+		fmt.Println(strings.Repeat("=", 60))
+	case BossBlind:
+		fmt.Println(strings.Repeat("🎆", 15))
+		fmt.Println("💀 BOSS BLIND ANNIHILATED! 💀")
+		fmt.Printf("    🔥 EPIC SCORE: %d/%d 🔥\n", g.totalScore, g.currentTarget)
+		if g.currentAnte < MaxAntes {
+			fmt.Printf("🎊 ANTE %d CONQUERED! 🎊\n", g.currentAnte)
+		}
+		fmt.Println(strings.Repeat("🎆", 15))
+	}
+	fmt.Println()
+
+	// Advance to next blind
+	if g.currentBlind == SmallBlind {
+		g.currentBlind = BigBlind
+	} else if g.currentBlind == BigBlind {
+		g.currentBlind = BossBlind
+	} else {
+		// Completed Boss Blind, advance to next ante
+		g.currentAnte++
+		g.currentBlind = SmallBlind
+		if g.currentAnte <= MaxAntes {
+			fmt.Println("🌟 ANTE PROGRESSION 🌟")
+			fmt.Printf("   Ante %d → Ante %d\n", g.currentAnte-1, g.currentAnte)
+			fmt.Println("🔄 NEW CHALLENGE AWAITS!")
+			fmt.Println()
+		}
+	}
+
+	if g.currentAnte <= MaxAntes {
+		// Reset for next blind
+		g.totalScore = 0
+		g.handsPlayed = 0
+		g.discardsUsed = 0
+		g.currentTarget = GetBlindRequirement(g.currentAnte, g.currentBlind)
+
+		// Shuffle and deal new hand
+		g.deckIndex = 0
+		ShuffleDeck(g.deck)
+		g.playerCards = make([]Card, InitialCards)
+		copy(g.playerCards, g.deck[g.deckIndex:g.deckIndex+InitialCards])
+		g.deckIndex += InitialCards
+
+		// Show next blind info
+		blindEmoji := ""
+		switch g.currentBlind {
+		case SmallBlind:
+			blindEmoji = "🔸"
+		case BigBlind:
+			blindEmoji = "🔶"
+		case BossBlind:
+			blindEmoji = "💀"
+		}
+
+		fmt.Printf("%s NOW ENTERING: %s (Ante %d) %s\n",
+			blindEmoji, g.currentBlind, g.currentAnte, blindEmoji)
+		fmt.Printf("🎯 NEW TARGET: %d points\n", g.currentTarget)
+		fmt.Println("🃏 Fresh hand dealt!")
+		fmt.Println(strings.Repeat("-", 40))
+		fmt.Println()
+	}
+}
+
+// showGameResults displays the final game results for a failed blind
 func (g *Game) showGameResults() {
 	fmt.Println(strings.Repeat("=", 50))
-	if g.totalScore >= TargetScore {
-		fmt.Println("🎉 VICTORY! You reached the target score!")
-	} else {
-		fmt.Println("💀 DEFEAT! You ran out of hands.")
-	}
-	fmt.Printf("Final Score: %d/%d\n", g.totalScore, TargetScore)
+	fmt.Println("💀 DEFEAT! You failed to beat the blind.")
+	fmt.Printf("Final Score: %d/%d (Ante %d - %s)\n", g.totalScore, g.currentTarget, g.currentAnte, g.currentBlind)
 	fmt.Printf("Hands Played: %d/%d\n", g.handsPlayed, MaxHands)
 	fmt.Printf("Discards Used: %d/%d\n", g.discardsUsed, MaxDiscards)
 	fmt.Println(strings.Repeat("=", 50))
+}
+
+// showVictoryResults displays the final victory results
+func (g *Game) showVictoryResults() {
+	fmt.Println(strings.Repeat("=", 60))
+	fmt.Println("🏆 ULTIMATE VICTORY! 🏆")
+	fmt.Println("🎉 You have conquered all 8 Antes! 🎉")
+	fmt.Printf("Final Ante: %d\n", MaxAntes)
+	fmt.Println("You are a true Balatro master!")
+	fmt.Println(strings.Repeat("=", 60))
 }
 
 // removeCards removes cards at specified indices and returns the new slice
