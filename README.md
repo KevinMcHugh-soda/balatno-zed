@@ -108,6 +108,64 @@ The difficulty scales progressively through each Ante:
 
 **Formula**: Base requirement increases by 75 points per Ante, with Big Blind = 1.5x Small Blind and Boss Blind = 2x Small Blind.
 
+## Balance Configuration
+
+**🎯 No Recompilation Required!** All game balance is configurable via CSV files that load at runtime.
+
+### Configuration Files
+
+#### `ante_requirements.csv` - Blind Score Requirements
+```csv
+small,big,boss
+300,450,600
+375,562,750
+450,675,900
+...
+```
+- Each row = one ante (row 1 = Ante 1, row 2 = Ante 2, etc.)
+- Columns: `small` (Small Blind), `big` (Big Blind), `boss` (Boss Blind)
+
+#### `hand_scores.csv` - Poker Hand Values  
+```csv
+hand,base,mult
+High Card,5,1
+Pair,10,2
+Two Pair,20,2
+...
+```
+- Each row = one poker hand type
+- Columns: `hand` (exact name), `base` (base score), `mult` (multiplier)
+
+### Making Balance Changes
+1. **Edit CSV files** with any text editor
+2. **Run the game** - changes load automatically
+3. **Test immediately** - no compilation needed!
+
+### Example: Easier Early Game
+```csv
+small,big,boss
+150,225,300    ← Ante 1 now 50% easier
+375,562,750
+450,675,900
+...
+```
+
+### Example: Buff Weak Hands
+```csv
+hand,base,mult
+High Card,10,2   ← Was 5,1 - now 600% better!
+Pair,15,3        ← Was 10,2 - now 275% better!
+Two Pair,20,2
+...
+```
+
+### Fallback Safety
+- **Missing files?** Game uses hardcoded defaults
+- **Invalid format?** Shows warning, continues with defaults
+- **Never crashes** due to configuration issues
+
+📖 **Full Documentation**: See `BALANCE_CONFIG.md` for detailed examples and advanced configuration tips.
+
 ## Money & Shop System
 
 ### Earning Money

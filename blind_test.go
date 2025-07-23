@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func TestGetBlindRequirement(t *testing.T) {
+func TestGetAnteRequirement(t *testing.T) {
 	tests := []struct {
 		ante      int
 		blindType BlindType
@@ -39,9 +39,9 @@ func TestGetBlindRequirement(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := GetBlindRequirement(tt.ante, tt.blindType)
+			result := GetAnteRequirement(tt.ante, tt.blindType)
 			if result != tt.expected {
-				t.Errorf("GetBlindRequirement(%d, %v) = %d, want %d",
+				t.Errorf("GetAnteRequirement(%d, %v) = %d, want %d",
 					tt.ante, tt.blindType, result, tt.expected)
 			}
 		})
@@ -55,7 +55,7 @@ func TestBlindProgression(t *testing.T) {
 
 	for ante := 1; ante <= 8; ante++ {
 		expectedBase := baseRequirement + (ante-1)*increment
-		actualBase := GetBlindRequirement(ante, SmallBlind)
+		actualBase := GetAnteRequirement(ante, SmallBlind)
 
 		if actualBase != expectedBase {
 			t.Errorf("Ante %d Small Blind = %d, want %d", ante, actualBase, expectedBase)
@@ -66,9 +66,9 @@ func TestBlindProgression(t *testing.T) {
 func TestBlindTypeMultipliers(t *testing.T) {
 	// Test that Big Blind is 1.5x Small Blind and Boss Blind is 2x Small Blind
 	for ante := 1; ante <= 8; ante++ {
-		smallBlind := GetBlindRequirement(ante, SmallBlind)
-		bigBlind := GetBlindRequirement(ante, BigBlind)
-		bossBlind := GetBlindRequirement(ante, BossBlind)
+		smallBlind := GetAnteRequirement(ante, SmallBlind)
+		bigBlind := GetAnteRequirement(ante, BigBlind)
+		bossBlind := GetAnteRequirement(ante, BossBlind)
 
 		expectedBigBlind := int(float64(smallBlind) * 1.5)
 		expectedBossBlind := smallBlind * 2
@@ -106,8 +106,8 @@ func TestBlindTypeString(t *testing.T) {
 	}
 }
 
-func BenchmarkGetBlindRequirement(b *testing.B) {
+func BenchmarkGetAnteRequirement(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		GetBlindRequirement(5, BossBlind)
+		GetAnteRequirement(5, BossBlind)
 	}
 }

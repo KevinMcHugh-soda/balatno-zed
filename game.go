@@ -57,26 +57,6 @@ type Blind struct {
 	Description string
 }
 
-// GetBlindRequirement calculates the score requirement for a blind
-func GetBlindRequirement(ante int, blindType BlindType) int {
-	base := 300
-
-	// Increase base requirement each ante
-	requirement := base + (ante-1)*75
-
-	// Adjust based on blind type
-	switch blindType {
-	case SmallBlind:
-		return requirement
-	case BigBlind:
-		return int(float64(requirement) * 1.5)
-	case BossBlind:
-		return requirement * 2
-	default:
-		return requirement
-	}
-}
-
 // SortMode represents how cards should be displayed
 type SortMode int
 
@@ -122,8 +102,14 @@ func NewGame() *Game {
 		jokers:       []Joker{},
 	}
 
+	// Load configuration
+	if err := LoadConfig(); err != nil {
+		// Config loading failed, but we have fallback defaults
+		fmt.Printf("Warning: %v\n", err)
+	}
+
 	// Set initial target
-	game.currentTarget = GetBlindRequirement(game.currentAnte, game.currentBlind)
+	game.currentTarget = GetAnteRequirement(game.currentAnte, game.currentBlind)
 
 	// Deal initial hand
 	game.playerCards = make([]Card, InitialCards)
@@ -528,7 +514,7 @@ func (g *Game) handleBlindCompletion() {
 		g.totalScore = 0
 		g.handsPlayed = 0
 		g.discardsUsed = 0
-		g.currentTarget = GetBlindRequirement(g.currentAnte, g.currentBlind)
+		g.currentTarget = GetAnteRequirement(g.currentAnte, g.currentBlind)
 
 		// Shuffle and deal new hand
 		g.deckIndex = 0

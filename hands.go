@@ -159,10 +159,16 @@ func isStraight(cards []Card) bool {
 
 type RoyalFlushEvaluator struct{}
 
-func (e *RoyalFlushEvaluator) Name() string    { return "Royal Flush" }
-func (e *RoyalFlushEvaluator) BaseScore() int  { return 100 }
-func (e *RoyalFlushEvaluator) Multiplier() int { return 8 }
-func (e *RoyalFlushEvaluator) Priority() int   { return 10 }
+func (e *RoyalFlushEvaluator) Name() string { return "Royal Flush" }
+func (e *RoyalFlushEvaluator) BaseScore() int {
+	base, _ := GetHandScore("Royal Flush")
+	return base
+}
+func (e *RoyalFlushEvaluator) Multiplier() int {
+	_, mult := GetHandScore("Royal Flush")
+	return mult
+}
+func (e *RoyalFlushEvaluator) Priority() int { return 10 }
 
 func (e *RoyalFlushEvaluator) Matches(cards []Card) bool {
 	if !isFlush(cards) || !isStraight(cards) {
@@ -176,10 +182,16 @@ func (e *RoyalFlushEvaluator) Matches(cards []Card) bool {
 
 type StraightFlushEvaluator struct{}
 
-func (e *StraightFlushEvaluator) Name() string    { return "Straight Flush" }
-func (e *StraightFlushEvaluator) BaseScore() int  { return 100 }
-func (e *StraightFlushEvaluator) Multiplier() int { return 8 }
-func (e *StraightFlushEvaluator) Priority() int   { return 9 }
+func (e *StraightFlushEvaluator) Name() string { return "Straight Flush" }
+func (e *StraightFlushEvaluator) BaseScore() int {
+	base, _ := GetHandScore("Straight Flush")
+	return base
+}
+func (e *StraightFlushEvaluator) Multiplier() int {
+	_, mult := GetHandScore("Straight Flush")
+	return mult
+}
+func (e *StraightFlushEvaluator) Priority() int { return 9 }
 
 func (e *StraightFlushEvaluator) Matches(cards []Card) bool {
 	return isFlush(cards) && isStraight(cards)
@@ -187,10 +199,16 @@ func (e *StraightFlushEvaluator) Matches(cards []Card) bool {
 
 type FourOfAKindEvaluator struct{}
 
-func (e *FourOfAKindEvaluator) Name() string    { return "Four of a Kind" }
-func (e *FourOfAKindEvaluator) BaseScore() int  { return 60 }
-func (e *FourOfAKindEvaluator) Multiplier() int { return 7 }
-func (e *FourOfAKindEvaluator) Priority() int   { return 8 }
+func (e *FourOfAKindEvaluator) Name() string { return "Four of a Kind" }
+func (e *FourOfAKindEvaluator) BaseScore() int {
+	base, _ := GetHandScore("Four of a Kind")
+	return base
+}
+func (e *FourOfAKindEvaluator) Multiplier() int {
+	_, mult := GetHandScore("Four of a Kind")
+	return mult
+}
+func (e *FourOfAKindEvaluator) Priority() int { return 8 }
 
 func (e *FourOfAKindEvaluator) Matches(cards []Card) bool {
 	rankCounts := getRankCounts(cards)
@@ -204,10 +222,16 @@ func (e *FourOfAKindEvaluator) Matches(cards []Card) bool {
 
 type FullHouseEvaluator struct{}
 
-func (e *FullHouseEvaluator) Name() string    { return "Full House" }
-func (e *FullHouseEvaluator) BaseScore() int  { return 40 }
-func (e *FullHouseEvaluator) Multiplier() int { return 4 }
-func (e *FullHouseEvaluator) Priority() int   { return 7 }
+func (e *FullHouseEvaluator) Name() string { return "Full House" }
+func (e *FullHouseEvaluator) BaseScore() int {
+	base, _ := GetHandScore("Full House")
+	return base
+}
+func (e *FullHouseEvaluator) Multiplier() int {
+	_, mult := GetHandScore("Full House")
+	return mult
+}
+func (e *FullHouseEvaluator) Priority() int { return 7 }
 
 func (e *FullHouseEvaluator) Matches(cards []Card) bool {
 	rankCounts := getRankCounts(cards)
@@ -227,10 +251,16 @@ func (e *FullHouseEvaluator) Matches(cards []Card) bool {
 
 type FlushEvaluator struct{}
 
-func (e *FlushEvaluator) Name() string    { return "Flush" }
-func (e *FlushEvaluator) BaseScore() int  { return 35 }
-func (e *FlushEvaluator) Multiplier() int { return 4 }
-func (e *FlushEvaluator) Priority() int   { return 6 }
+func (e *FlushEvaluator) Name() string { return "Flush" }
+func (e *FlushEvaluator) BaseScore() int {
+	base, _ := GetHandScore("Flush")
+	return base
+}
+func (e *FlushEvaluator) Multiplier() int {
+	_, mult := GetHandScore("Flush")
+	return mult
+}
+func (e *FlushEvaluator) Priority() int { return 6 }
 
 func (e *FlushEvaluator) Matches(cards []Card) bool {
 	return isFlush(cards)
@@ -238,10 +268,16 @@ func (e *FlushEvaluator) Matches(cards []Card) bool {
 
 type StraightEvaluator struct{}
 
-func (e *StraightEvaluator) Name() string    { return "Straight" }
-func (e *StraightEvaluator) BaseScore() int  { return 30 }
-func (e *StraightEvaluator) Multiplier() int { return 4 }
-func (e *StraightEvaluator) Priority() int   { return 5 }
+func (e *StraightEvaluator) Name() string { return "Straight" }
+func (e *StraightEvaluator) BaseScore() int {
+	base, _ := GetHandScore("Straight")
+	return base
+}
+func (e *StraightEvaluator) Multiplier() int {
+	_, mult := GetHandScore("Straight")
+	return mult
+}
+func (e *StraightEvaluator) Priority() int { return 5 }
 
 func (e *StraightEvaluator) Matches(cards []Card) bool {
 	return isStraight(cards)
@@ -249,10 +285,16 @@ func (e *StraightEvaluator) Matches(cards []Card) bool {
 
 type ThreeOfAKindEvaluator struct{}
 
-func (e *ThreeOfAKindEvaluator) Name() string    { return "Three of a Kind" }
-func (e *ThreeOfAKindEvaluator) BaseScore() int  { return 30 }
-func (e *ThreeOfAKindEvaluator) Multiplier() int { return 3 }
-func (e *ThreeOfAKindEvaluator) Priority() int   { return 4 }
+func (e *ThreeOfAKindEvaluator) Name() string { return "Three of a Kind" }
+func (e *ThreeOfAKindEvaluator) BaseScore() int {
+	base, _ := GetHandScore("Three of a Kind")
+	return base
+}
+func (e *ThreeOfAKindEvaluator) Multiplier() int {
+	_, mult := GetHandScore("Three of a Kind")
+	return mult
+}
+func (e *ThreeOfAKindEvaluator) Priority() int { return 4 }
 
 func (e *ThreeOfAKindEvaluator) Matches(cards []Card) bool {
 	rankCounts := getRankCounts(cards)
@@ -266,10 +308,16 @@ func (e *ThreeOfAKindEvaluator) Matches(cards []Card) bool {
 
 type TwoPairEvaluator struct{}
 
-func (e *TwoPairEvaluator) Name() string    { return "Two Pair" }
-func (e *TwoPairEvaluator) BaseScore() int  { return 20 }
-func (e *TwoPairEvaluator) Multiplier() int { return 2 }
-func (e *TwoPairEvaluator) Priority() int   { return 3 }
+func (e *TwoPairEvaluator) Name() string { return "Two Pair" }
+func (e *TwoPairEvaluator) BaseScore() int {
+	base, _ := GetHandScore("Two Pair")
+	return base
+}
+func (e *TwoPairEvaluator) Multiplier() int {
+	_, mult := GetHandScore("Two Pair")
+	return mult
+}
+func (e *TwoPairEvaluator) Priority() int { return 3 }
 
 func (e *TwoPairEvaluator) Matches(cards []Card) bool {
 	rankCounts := getRankCounts(cards)
@@ -286,10 +334,16 @@ func (e *TwoPairEvaluator) Matches(cards []Card) bool {
 
 type PairEvaluator struct{}
 
-func (e *PairEvaluator) Name() string    { return "Pair" }
-func (e *PairEvaluator) BaseScore() int  { return 10 }
-func (e *PairEvaluator) Multiplier() int { return 2 }
-func (e *PairEvaluator) Priority() int   { return 2 }
+func (e *PairEvaluator) Name() string { return "Pair" }
+func (e *PairEvaluator) BaseScore() int {
+	base, _ := GetHandScore("Pair")
+	return base
+}
+func (e *PairEvaluator) Multiplier() int {
+	_, mult := GetHandScore("Pair")
+	return mult
+}
+func (e *PairEvaluator) Priority() int { return 2 }
 
 func (e *PairEvaluator) Matches(cards []Card) bool {
 	rankCounts := getRankCounts(cards)
@@ -303,10 +357,16 @@ func (e *PairEvaluator) Matches(cards []Card) bool {
 
 type HighCardEvaluator struct{}
 
-func (e *HighCardEvaluator) Name() string    { return "High Card" }
-func (e *HighCardEvaluator) BaseScore() int  { return 5 }
-func (e *HighCardEvaluator) Multiplier() int { return 1 }
-func (e *HighCardEvaluator) Priority() int   { return 1 }
+func (e *HighCardEvaluator) Name() string { return "High Card" }
+func (e *HighCardEvaluator) BaseScore() int {
+	base, _ := GetHandScore("High Card")
+	return base
+}
+func (e *HighCardEvaluator) Multiplier() int {
+	_, mult := GetHandScore("High Card")
+	return mult
+}
+func (e *HighCardEvaluator) Priority() int { return 1 }
 
 func (e *HighCardEvaluator) Matches(cards []Card) bool {
 	// High card always matches as fallback
