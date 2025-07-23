@@ -2,7 +2,7 @@ package main
 
 import (
 	"flag"
-	"fmt"
+	"log"
 )
 
 func main() {
@@ -13,10 +13,16 @@ func main() {
 	// Set seed if provided
 	if *seed != 0 {
 		SetSeed(*seed)
-		fmt.Printf("Using seed: %d\n", *seed)
 	}
 
-	// Create and run the game
+	// Create the game
 	game := NewGame()
-	game.Run()
+
+	// Create and run the terminal UI
+	ui, err := NewTerminalUI(game)
+	if err != nil {
+		log.Fatalf("Failed to initialize terminal UI: %v", err)
+	}
+
+	ui.Run()
 }
