@@ -625,116 +625,238 @@ func (g *Game) showShop() {
 		shopItems = availableJokers
 	}
 
-	// Shop loop - stay in shop until player skips or buys everything
-	for {
-		fmt.Println("🏪 SHOP 🏪")
-		fmt.Printf("💰 Your Money: $%d\n", g.money)
-		fmt.Println()
+	// Display shop once and handle single input
+	fmt.Println("🏪 SHOP 🏪")
+	fmt.Printf("💰 Your Money: $%d\n", g.money)
+	fmt.Println()
 
-		// Show shop items
-		availableSlots := 0
-		for i, joker := range shopItems {
-			if joker.Name != "" { // Item still available
-				canAfford := g.money >= joker.Price
-				affordText := ""
-				if !canAfford {
-					affordText = " (can't afford)"
-				}
-				fmt.Printf("%d. %s - $%d%s\n", i+1, joker.Name, joker.Price, affordText)
-				fmt.Printf("   %s\n", joker.Description)
-				fmt.Println()
-				availableSlots++
+	// Show shop items
+	availableSlots := 0
+	for i, joker := range shopItems {
+		if joker.Name != "" { // Item still available
+			canAfford := g.money >= joker.Price
+			affordText := ""
+			if !canAfford {
+				affordText = " (can't afford)"
 			}
-		}
-
-		// Show current jokers
-		if len(g.jokers) > 0 {
-			fmt.Printf("🃏 Your Jokers: %s\n", FormatJokersList(g.jokers))
+			fmt.Printf("%d. %s - $%d%s\n", i+1, joker.Name, joker.Price, affordText)
+			fmt.Printf("   %s\n", joker.Description)
 			fmt.Println()
+			availableSlots++
 		}
+	}
 
-		// If no items left, exit shop
-		if availableSlots == 0 {
-			fmt.Println("Shop sold out!")
-			fmt.Print("Press enter to continue...")
-			g.scanner.Scan()
-			break
-		}
+	// Show current jokers
+	if len(g.jokers) > 0 {
+		fmt.Printf("🃏 Your Jokers: %s\n", FormatJokersList(g.jokers))
+		fmt.Println()
+	}
 
-		// Show options
-		fmt.Printf("Buy item (1-%d), (r)eroll ($%d), or (s)kip shop: ", len(shopItems), g.rerollCost)
+	// If no items left, exit shop
+	if availableSlots == 0 {
+		fmt.Println("Shop sold out!")
+		fmt.Print("Press enter to continue...")
+		g.scanner.Scan()
+		return
+	}
 
-		if g.scanner.Scan() {
-			input := strings.TrimSpace(strings.ToLower(g.scanner.Text()))
+	// Show options and handle single input
+	fmt.Printf("Buy item (1-%d), (r)eroll ($%d), or (s)kip shop: ", len(shopItems), g.rerollCost)
 
-			if input == "s" || input == "skip" {
-				fmt.Println("Skipped shop.")
-				break
-			} else if input == "r" || input == "reroll" {
-				if g.money >= g.rerollCost {
-					g.money -= g.rerollCost
-					fmt.Printf("💫 Rerolled for $%d!\n", g.rerollCost)
-					g.rerollCost++ // Increase cost for next reroll
+	if g.scanner.Scan() {
+		input := strings.TrimSpace(strings.ToLower(g.scanner.Text()))
 
-					// Generate new shop items
-					if len(availableJokers) >= 2 {
-						// Re-shuffle for new items
-						shuffled := make([]Joker, len(availableJokers))
-						copy(shuffled, availableJokers)
+		if input == "s" || input == "skip" {
+			fmt.Println("Skipped shop.")
+			return
+		} else if input == "r" || input == "reroll" {
+			if g.money >= g.rerollCost {
+				g.money -= g.rerollCost
+				fmt.Printf("💫 Rerolled for $%d!\n", g.rerollCost)
+				g.rerollCost++ // Increase cost for next reroll
 
-						// Fisher-Yates shuffle for reroll
-						for i := len(shuffled) - 1; i > 0; i-- {
-							j := rand.Intn(i + 1)
-							shuffled[i], shuffled[j] = shuffled[j], shuffled[i]
-						}
+				// Generate new shop items
+				if len(availableJokers) >= 2 {
+					// Re-shuffle for new items
+					shuffled := make([]Joker, len(availableJokers))
+					copy(shuffled, availableJokers)
 
-						shopItems = shuffled[:2]
-					} else {
-						shopItems = availableJokers
+					// Fisher-Yates shuffle for reroll
+					for i := len(shuffled) - 1; i > 0; i-- {
+						j := rand.Intn(i + 1)
+						shuffled[i], shuffled[j] = shuffled[j], shuffled[i]
 					}
 
-					fmt.Printf("💰 Remaining money: $%d (Next reroll: $%d)\n", g.money, g.rerollCost)
-					fmt.Println()
-					continue // Redisplay shop
+					shopItems = shuffled[:2]
 				} else {
-					fmt.Printf("Not enough money to reroll! Need $%d more.\n", g.rerollCost-g.money)
-					fmt.Println("Choose a different option.")
-					continue
-				}
-			} else if choice, err := strconv.Atoi(input); err == nil && choice >= 1 && choice <= len(shopItems) {
-				selectedJoker := shopItems[choice-1]
-				if selectedJoker.Name == "" {
-					fmt.Println("That slot is empty!")
-					continue
+					shopItems = availableJokers
 				}
 
-				if g.money >= selectedJoker.Price {
-					g.money -= selectedJoker.Price
-					g.jokers = append(g.jokers, selectedJoker)
-					fmt.Printf("✨ Purchased %s! ✨\n", selectedJoker.Name)
-					fmt.Printf("💰 Remaining money: $%d\n", g.money)
+				fmt.Printf("💰 Remaining money: $%d (Next reroll: $%d)\n", g.money, g.rerollCost)
+				fmt.Println()
 
-					// Remove purchased item from shop
-					shopItems[choice-1] = Joker{} // Empty slot
-
-					// Update available jokers list
-					for i, joker := range availableJokers {
-						if joker.Name == selectedJoker.Name {
-							availableJokers = append(availableJokers[:i], availableJokers[i+1:]...)
-							break
-						}
-					}
-
-					fmt.Println()
-					continue // Stay in shop for more purchases
-				} else {
-					fmt.Printf("Not enough money! Need $%d more.\n", selectedJoker.Price-g.money)
-					continue
-				}
+				// Recursively call shop to show new items
+				g.showShopWithItems(availableJokers, shopItems)
+				return
 			} else {
-				fmt.Println("Invalid choice.")
-				continue
+				fmt.Printf("Not enough money to reroll! Need $%d more.\n", g.rerollCost-g.money)
+				return
 			}
+		} else if choice, err := strconv.Atoi(input); err == nil && choice >= 1 && choice <= len(shopItems) {
+			selectedJoker := shopItems[choice-1]
+			if selectedJoker.Name == "" {
+				fmt.Println("That slot is empty!")
+				return
+			}
+
+			if g.money >= selectedJoker.Price {
+				g.money -= selectedJoker.Price
+				g.jokers = append(g.jokers, selectedJoker)
+				fmt.Printf("✨ Purchased %s! ✨\n", selectedJoker.Name)
+				fmt.Printf("💰 Remaining money: $%d\n", g.money)
+
+				// Remove purchased item from shop
+				shopItems[choice-1] = Joker{} // Empty slot
+
+				// Update available jokers list
+				for i, joker := range availableJokers {
+					if joker.Name == selectedJoker.Name {
+						availableJokers = append(availableJokers[:i], availableJokers[i+1:]...)
+						break
+					}
+				}
+
+				fmt.Println()
+
+				// Recursively call shop to allow more purchases
+				g.showShopWithItems(availableJokers, shopItems)
+				return
+			} else {
+				fmt.Printf("Not enough money! Need $%d more.\n", selectedJoker.Price-g.money)
+				return
+			}
+		} else {
+			fmt.Println("Invalid choice.")
+			return
+		}
+	}
+}
+
+// showShopWithItems is a helper function to continue shop with specific items
+func (g *Game) showShopWithItems(availableJokers []Joker, shopItems []Joker) {
+	// Display shop with current items
+	fmt.Println("🏪 SHOP 🏪")
+	fmt.Printf("💰 Your Money: $%d\n", g.money)
+	fmt.Println()
+
+	// Show shop items
+	availableSlots := 0
+	for i, joker := range shopItems {
+		if joker.Name != "" { // Item still available
+			canAfford := g.money >= joker.Price
+			affordText := ""
+			if !canAfford {
+				affordText = " (can't afford)"
+			}
+			fmt.Printf("%d. %s - $%d%s\n", i+1, joker.Name, joker.Price, affordText)
+			fmt.Printf("   %s\n", joker.Description)
+			fmt.Println()
+			availableSlots++
+		}
+	}
+
+	// Show current jokers
+	if len(g.jokers) > 0 {
+		fmt.Printf("🃏 Your Jokers: %s\n", FormatJokersList(g.jokers))
+		fmt.Println()
+	}
+
+	// If no items left, exit shop
+	if availableSlots == 0 {
+		fmt.Println("Shop sold out!")
+		fmt.Print("Press enter to continue...")
+		g.scanner.Scan()
+		return
+	}
+
+	// Show options and handle single input
+	fmt.Printf("Buy item (1-%d), (r)eroll ($%d), or (s)kip shop: ", len(shopItems), g.rerollCost)
+
+	if g.scanner.Scan() {
+		input := strings.TrimSpace(strings.ToLower(g.scanner.Text()))
+
+		if input == "s" || input == "skip" {
+			fmt.Println("Skipped shop.")
+			return
+		} else if input == "r" || input == "reroll" {
+			if g.money >= g.rerollCost {
+				g.money -= g.rerollCost
+				fmt.Printf("💫 Rerolled for $%d!\n", g.rerollCost)
+				g.rerollCost++ // Increase cost for next reroll
+
+				// Generate new shop items
+				if len(availableJokers) >= 2 {
+					// Re-shuffle for new items
+					shuffled := make([]Joker, len(availableJokers))
+					copy(shuffled, availableJokers)
+
+					// Fisher-Yates shuffle for reroll
+					for i := len(shuffled) - 1; i > 0; i-- {
+						j := rand.Intn(i + 1)
+						shuffled[i], shuffled[j] = shuffled[j], shuffled[i]
+					}
+
+					shopItems = shuffled[:2]
+				} else {
+					shopItems = availableJokers
+				}
+
+				fmt.Printf("💰 Remaining money: $%d (Next reroll: $%d)\n", g.money, g.rerollCost)
+				fmt.Println()
+
+				// Recursively call shop to show new items
+				g.showShopWithItems(availableJokers, shopItems)
+				return
+			} else {
+				fmt.Printf("Not enough money to reroll! Need $%d more.\n", g.rerollCost-g.money)
+				return
+			}
+		} else if choice, err := strconv.Atoi(input); err == nil && choice >= 1 && choice <= len(shopItems) {
+			selectedJoker := shopItems[choice-1]
+			if selectedJoker.Name == "" {
+				fmt.Println("That slot is empty!")
+				return
+			}
+
+			if g.money >= selectedJoker.Price {
+				g.money -= selectedJoker.Price
+				g.jokers = append(g.jokers, selectedJoker)
+				fmt.Printf("✨ Purchased %s! ✨\n", selectedJoker.Name)
+				fmt.Printf("💰 Remaining money: $%d\n", g.money)
+
+				// Remove purchased item from shop
+				shopItems[choice-1] = Joker{} // Empty slot
+
+				// Update available jokers list
+				for i, joker := range availableJokers {
+					if joker.Name == selectedJoker.Name {
+						availableJokers = append(availableJokers[:i], availableJokers[i+1:]...)
+						break
+					}
+				}
+
+				fmt.Println()
+
+				// Recursively call shop to allow more purchases
+				g.showShopWithItems(availableJokers, shopItems)
+				return
+			} else {
+				fmt.Printf("Not enough money! Need $%d more.\n", selectedJoker.Price-g.money)
+				return
+			}
+		} else {
+			fmt.Println("Invalid choice.")
+			return
 		}
 	}
 }
