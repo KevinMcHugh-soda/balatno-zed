@@ -6,6 +6,8 @@ A command-line clone of the popular deckbuilding roguelike game Balatro. This im
 
 Balatro CLI is a faithful recreation of Balatro's core progression system that runs in your terminal. Players must conquer 8 Antes, each containing 3 increasingly difficult Blinds: Small Blind, Big Blind, and Boss Blind. You're dealt 7 cards from a standard 52-card deck and can either play up to 5 cards to form a poker hand, or discard unwanted cards to get new ones. Each hand type has a base score and multiplier, and card values are added to create the final score.
 
+The game features a complete **money and shop system** - earn money by completing blinds and spend it on powerful Jokers that provide ongoing benefits throughout your run.
+
 ## How to Run
 
 ```bash
@@ -37,6 +39,7 @@ go run . -seed 42
   - 🔸 **Small Blind** - Base difficulty
   - 🔶 **Big Blind** - 1.5x harder than Small Blind  
   - 💀 **Boss Blind** - 2x harder than Small Blind (special rules coming soon!)
+- **🏪 Shop** appears between each blind where you can spend money on Jokers
 
 ### Each Blind Challenge
 1. You get **4 hands** and **3 discards** to reach the target score
@@ -47,14 +50,16 @@ go run . -seed 42
    - **`resort`**: Toggle card sorting between rank and suit
 4. The game evaluates your poker hand and adds to your total score
 5. Beat the blind by reaching the target score before running out of hands
-6. Complete all 3 blinds to advance to the next Ante
-7. Type `quit` to exit early
+6. **Earn money** based on blind type and efficiency
+7. **Visit the shop** to buy Jokers with your earned money
+8. Complete all 3 blinds to advance to the next Ante
+9. Type `quit` to exit early
 
 ### Example Gameplay
 ```
 🔸 Ante 1 - Small Blind
 🎯 Target: 300 | Score: 0 [░░░░░░░░░░░░░░░░░░░░] (0.0%)
-🎴 Hands Left: 4 | 🗑️  Discards Left: 3
+🎴 Hands Left: 4 | 🗑️  Discards Left: 3 | 💰 Money: $4
 
 Your cards (sorted by rank):
 1: A♠
@@ -73,9 +78,17 @@ Base Score: 10 | Card Values: 32 | Mult: 2x
 Final Score: (10 + 32) × 2 = 84 points
 💰 Total Score: 84/300
 
-🔸 Ante 1 - Small Blind
-🎯 Target: 300 | Score: 84 [█████░░░░░░░░░░░░░░░] (28.0%)
-🎴 Hands Left: 3 | 🗑️  Discards Left: 3
+💰 REWARD BREAKDOWN:
+   Base: $4 + Unused: $4 (2 hands + 3 discards)
+   💰 Total Earned: $8 | Your Money: $12
+
+🏪 SHOP 🏪
+💰 Your Money: $12
+
+1. The Golden Joker - $6
+   Earn $4 at the end of each Blind
+
+Buy (1) The Golden Joker, or (s)kip shop:
 ```
 
 ## Blind Requirements
@@ -94,6 +107,37 @@ The difficulty scales progressively through each Ante:
 | 8    | 825         | 1237      | 1650       |
 
 **Formula**: Base requirement increases by 75 points per Ante, with Big Blind = 1.5x Small Blind and Boss Blind = 2x Small Blind.
+
+## Money & Shop System
+
+### Earning Money
+You start each run with **$4** and earn money by completing blinds:
+
+| Blind Type | Base Reward | Bonus Rewards |
+|------------|-------------|---------------|
+| Small Blind | $4 | +$1 per unused hand |
+| Big Blind | $5 | +$1 per unused discard |
+| Boss Blind | $6 | **Joker bonuses** |
+
+**💡 Example**: Complete Small Blind using only 2 hands and 1 discard = $4 + $2 + $2 = **$8 total**
+
+### The Shop
+Between each blind, you visit the **🏪 Shop** where you can:
+- Purchase **Jokers** that provide permanent benefits
+- View your current money and owned Jokers
+- Choose to skip and save money for later
+
+### The Golden Joker
+**The Golden Joker** - *$6*
+- **Effect**: Earn $4 at the end of each Blind
+- **ROI**: Pays for itself in 1.5 blinds  
+- **Strategy**: Essential early-game purchase for economic snowballing
+
+### Money Management Tips
+- **Efficiency Rewards**: Unused hands/discards = more money
+- **Early Investment**: The Golden Joker quickly pays for itself
+- **Resource Planning**: Balance between completing blinds and preserving resources
+- **Blind Scaling**: Higher blinds give more base money but are harder to complete efficiently
 
 ## Scoring System
 
@@ -132,28 +176,31 @@ Complete all 8 Antes to achieve **ULTIMATE VICTORY** and become a true Balatro m
 
 ## Strategic Considerations
 
-### Early Antes (1-3)
-- Focus on consistent scoring with pairs and two pairs
-- Use discards to hunt for face cards and Aces
-- Small Blinds are forgiving - don't waste high-value hands
+### Early Antes (1-3) - Economic Foundation
+- **Money Priority**: Focus on efficient blind completion to maximize unused bonuses
+- **Golden Joker**: Buy it ASAP - it pays for itself in 1.5 blinds
+- **Card Strategy**: Consistent scoring with pairs and two pairs
+- **Resource Efficiency**: Try to save 1-2 hands per blind for bonus money
 
-### Mid Antes (4-6)  
-- Start prioritizing higher-scoring hands (straights, flushes)
-- Card value management becomes crucial
-- Big Blinds require 800+ point hands
+### Mid Antes (4-6) - Scaling Power
+- **Economic Engine**: Golden Joker should be generating $4 per blind
+- **Hand Requirements**: Start prioritizing higher-scoring hands (straights, flushes)
+- **Money Accumulation**: Build reserves for potential future Jokers
+- **Blind Difficulty**: Big Blinds require 800+ point hands
 
-### Late Antes (7-8)
-- Boss Blinds demand 1500+ points - you need premium hands
-- Four of a Kind, Straight Flush, or Royal Flush may be necessary
-- Resource management is critical - plan your 4 hands carefully
+### Late Antes (7-8) - Endgame Strategy  
+- **Premium Hands Required**: Boss Blinds demand 1500+ points
+- **Resource Scarcity**: Every hand and discard becomes precious
+- **All-or-Nothing**: May need Four of a Kind, Straight Flush, or Royal Flush
+- **Economic Pressure**: Money becomes less important than raw scoring power
 
 ### General Tips
-- **Resource Management**: You only get 4 hands and 3 discards per blind
-- **Progressive Difficulty**: Each Ante gets significantly harder
-- **Discard Strategy**: Early discards to hunt for pairs/straights in easier blinds
-- **Scoring Efficiency**: A pair of Aces (84 points) can beat low-card straights
-- **Card Values**: Face cards and Aces significantly boost your totals
-- **Boss Blind Prep**: Save your best hands for Boss Blinds when possible
+- **Money Management**: Buy The Golden Joker early for economic advantage
+- **Resource Efficiency**: Unused hands/discards = more money for Jokers
+- **Progressive Scaling**: Each Ante increases both difficulty and rewards
+- **Early Game Focus**: Efficient blind completion > perfect hands
+- **Late Game Focus**: Raw scoring power > economic efficiency
+- **Joker Value**: The Golden Joker provides ~$32-40 over a full run
 
 ## Testing
 
@@ -197,6 +244,7 @@ The codebase is organized into focused, modular files:
 - **`deck.go`** - Card, Suit, Rank definitions and deck operations  
 - **`hands.go`** - Interface-based poker hand evaluation system
 - **`game.go`** - Ante/Blind progression, game loop, and player interaction
+- **`jokers.go`** - Joker system, shop mechanics, and The Golden Joker
 
 ### Ante/Blind System
 
@@ -217,6 +265,25 @@ func GetBlindRequirement(ante int, blindType BlindType) int
 func (g *Game) handleBlindCompletion()
 ```
 
+### Money & Joker System
+
+Economic gameplay mechanics:
+
+```go
+type Joker struct {
+    Name        string
+    Description string
+    Price       int
+    OnBlindEnd  func() int // Money earned per blind
+}
+
+// Reward calculation with bonuses
+func (g *Game) calculateBlindReward() int
+
+// Shop system between blinds  
+func (g *Game) showShop()
+```
+
 ### Interface-Based Hand System
 
 Clean interface-based poker evaluation:
@@ -234,31 +301,37 @@ type HandEvaluator interface {
 ## Visual Features
 
 - **📊 Progress Bars**: Visual score progress with `█` and `░` characters
-- **🎭 Blind Indicators**: Unique emojis for each blind type
-- **🎆 Celebrations**: Escalating victory animations 
-- **📍 Clear Status**: Ante, blind type, and requirements always visible
+- **🎭 Blind Indicators**: Unique emojis for each blind type (🔸🔶💀)
+- **🎆 Celebrations**: Escalating victory animations with detailed reward breakdowns
+- **💰 Money Tracking**: Always-visible money counter in game status
+- **🏪 Shop Interface**: Clean shop display with affordability indicators
+- **📍 Clear Status**: Ante, blind type, money, and requirements always visible
 - **🎨 Colorful Output**: Rich terminal formatting for better UX
 
 ## Implementation Notes
 
 - Standard 52-card deck with proper shuffling
-- Authentic Balatro progression scaling
-- State resets between blinds (fresh hand, restored resources)
+- Authentic Balatro progression scaling with complete economy system
+- State resets between blinds (fresh hand, restored resources, money persists)
+- Modular Joker system with function-based effects
 - Interface-based design for extensibility
+- Comprehensive shop and money management
 - Comprehensive error handling and input validation
 - Centralized random source with configurable seeding
 
 ## Future Enhancements
 
-This implementation focuses on core Ante/Blind progression. The full Balatro experience includes:
+This implementation includes core progression with money/shop/joker systems. The full Balatro experience also includes:
 
-- **Boss Blind Effects**: Special rules and constraints for Boss Blinds
-- **Jokers**: Game-changing modifiers and scoring bonuses
-- **Shop System**: Buy and sell cards, jokers, and upgrades
+- **Boss Blind Effects**: Special rules and constraints for Boss Blinds *(coming soon!)*
+- **Additional Jokers**: Dozens more game-changing modifiers beyond The Golden Joker
+- **Advanced Shop Items**: Tarot cards, Planet cards, and card packs
 - **Card Enhancements**: Foil, holographic, and other card modifications
-- **Tarot Cards**: One-time powerful effects
-- **Planet Cards**: Upgrade specific hand types
+- **Vouchers**: Permanent upgrades and rule modifications
 - **Stakes**: Higher difficulty modes with additional constraints
+- **Endless Mode**: Continue beyond Ante 8 for ultimate challenges
+
+**✅ Currently Implemented**: Ante progression, money system, shop, The Golden Joker
 
 ---
 

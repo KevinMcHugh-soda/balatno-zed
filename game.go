@@ -11,10 +11,20 @@ import (
 
 // Game constants
 const (
-	MaxHands     = 4
-	MaxDiscards  = 3
-	InitialCards = 7
-	MaxAntes     = 8
+	MaxHands      = 4
+	MaxDiscards   = 3
+	InitialCards  = 7
+	MaxAntes      = 8
+	StartingMoney = 4
+)
+
+// Money rewards for completing blinds
+const (
+	SmallBlindReward    = 4
+	BigBlindReward      = 5
+	BossBlindReward     = 6
+	UnusedHandReward    = 1
+	UnusedDiscardReward = 1
 )
 
 // BlindType represents the type of blind being played
@@ -89,6 +99,8 @@ type Game struct {
 	currentAnte       int
 	currentBlind      BlindType
 	currentTarget     int
+	money             int
+	jokers            []Joker
 }
 
 // NewGame creates a new game instance
@@ -106,6 +118,8 @@ func NewGame() *Game {
 		sortMode:     SortByRank,
 		currentAnte:  1,
 		currentBlind: SmallBlind,
+		money:        StartingMoney,
+		jokers:       []Joker{},
 	}
 
 	// Set initial target
@@ -202,8 +216,8 @@ func (g *Game) showGameStatus() {
 	fmt.Printf("%s Ante %d - %s\n", blindEmoji, g.currentAnte, g.currentBlind)
 	fmt.Printf("🎯 Target: %d | Score: %d %s (%.1f%%)\n",
 		g.currentTarget, g.totalScore, progressBar, progress*100)
-	fmt.Printf("🎴 Hands Left: %d | 🗑️  Discards Left: %d\n",
-		MaxHands-g.handsPlayed, MaxDiscards-g.discardsUsed)
+	fmt.Printf("🎴 Hands Left: %d | 🗑️  Discards Left: %d | 💰 Money: $%d\n",
+		MaxHands-g.handsPlayed, MaxDiscards-g.discardsUsed, g.money)
 	fmt.Println()
 }
 
@@ -412,6 +426,30 @@ func (g *Game) removeAndDealCards(selectedIndices []int) {
 	}
 }
 
+// calculateBlindReward calculates money earned for completing a blind
+func (g *Game) calculateBlindReward() int {
+	// Base reward for blind type
+	var baseReward int
+	switch g.currentBlind {
+	case SmallBlind:
+		baseReward = SmallBlindReward
+	case BigBlind:
+		baseReward = BigBlindReward
+	case BossBlind:
+		baseReward = BossBlindReward
+	}
+
+	// Bonus for unused resources
+	unusedHands := MaxHands - g.handsPlayed
+	unusedDiscards := MaxDiscards - g.discardsUsed
+	bonusReward := unusedHands*UnusedHandReward + unusedDiscards*UnusedDiscardReward
+
+	// Joker rewards
+	jokerReward := CalculateJokerRewards(g.jokers)
+
+	return baseReward + bonusReward + jokerReward
+}
+
 // handleBlindCompletion handles completing a blind and advancing to the next
 func (g *Game) handleBlindCompletion() {
 	// Different celebrations for different blind types
@@ -437,6 +475,35 @@ func (g *Game) handleBlindCompletion() {
 		}
 		fmt.Println(strings.Repeat("🎆", 15))
 	}
+
+	// Calculate and award money with detailed breakdown
+	var baseReward int
+	switch g.currentBlind {
+	case SmallBlind:
+		baseReward = SmallBlindReward
+	case BigBlind:
+		baseReward = BigBlindReward
+	case BossBlind:
+		baseReward = BossBlindReward
+	}
+
+	unusedHands := MaxHands - g.handsPlayed
+	unusedDiscards := MaxDiscards - g.discardsUsed
+	bonusReward := unusedHands*UnusedHandReward + unusedDiscards*UnusedDiscardReward
+	jokerReward := CalculateJokerRewards(g.jokers)
+	totalReward := baseReward + bonusReward + jokerReward
+
+	g.money += totalReward
+
+	fmt.Printf("💰 REWARD BREAKDOWN:\n")
+	fmt.Printf("   Base: $%d", baseReward)
+	if bonusReward > 0 {
+		fmt.Printf(" + Unused: $%d (%d hands + %d discards)", bonusReward, unusedHands, unusedDiscards)
+	}
+	if jokerReward > 0 {
+		fmt.Printf(" + Jokers: $%d", jokerReward)
+	}
+	fmt.Printf("\n   💰 Total Earned: $%d | Your Money: $%d\n", totalReward, g.money)
 	fmt.Println()
 
 	// Advance to next blind
@@ -487,7 +554,59 @@ func (g *Game) handleBlindCompletion() {
 		fmt.Println("🃏 Fresh hand dealt!")
 		fmt.Println(strings.Repeat("-", 40))
 		fmt.Println()
+
+		// Show shop between blinds
+		g.showShop()
 	}
+}
+
+// showShop displays the shop interface between blinds
+func (g *Game) showShop() {
+	fmt.Println("🏪 SHOP 🏪")
+	fmt.Printf("💰 Your Money: $%d\n", g.money)
+	fmt.Println()
+
+	// Show available jokers
+	goldenJoker := GetGoldenJoker()
+	hasGoldenJoker := PlayerHasJoker(g.jokers, goldenJoker.Name)
+
+	if !hasGoldenJoker {
+		fmt.Printf("1. %s - $%d\n", goldenJoker.Name, goldenJoker.Price)
+		fmt.Printf("   %s\n", goldenJoker.Description)
+		fmt.Println()
+	}
+
+	// Show current jokers
+	if len(g.jokers) > 0 {
+		fmt.Printf("🃏 Your Jokers: %s\n", FormatJokersList(g.jokers))
+		fmt.Println()
+	}
+
+	// Shop interaction
+	if !hasGoldenJoker && g.money >= goldenJoker.Price {
+		fmt.Print("Buy (1) The Golden Joker, or (s)kip shop: ")
+		if g.scanner.Scan() {
+			input := strings.TrimSpace(strings.ToLower(g.scanner.Text()))
+			if input == "1" {
+				g.money -= goldenJoker.Price
+				g.jokers = append(g.jokers, goldenJoker)
+				fmt.Printf("✨ Purchased %s! ✨\n", goldenJoker.Name)
+				fmt.Printf("💰 Remaining money: $%d\n", g.money)
+			} else {
+				fmt.Println("Skipped shop.")
+			}
+		}
+	} else if hasGoldenJoker {
+		fmt.Println("No new jokers available.")
+		fmt.Print("Press enter to continue...")
+		g.scanner.Scan()
+	} else {
+		fmt.Printf("Need $%d to buy The Golden Joker (you have $%d)\n", goldenJoker.Price, g.money)
+		fmt.Print("Press enter to continue...")
+		g.scanner.Scan()
+	}
+
+	fmt.Println()
 }
 
 // showGameResults displays the final game results for a failed blind
