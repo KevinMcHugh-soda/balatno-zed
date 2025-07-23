@@ -84,18 +84,50 @@ type Joker struct {
 }
 ```
 
-### The Golden Joker
-- **Name**: "The Golden Joker"
-- **Cost**: $6
-- **Effect**: Earn $4 at the end of each Blind
-- **Description**: "Earn $4 at the end of each Blind"
+### YAML Joker Configuration System
+- **15+ Configurable Jokers**: All defined in `jokers.yaml`
+- **Runtime Loading**: No compilation needed for new jokers
+- **Three Effect Types**: AddMoney, AddChips, AddMult
+- **Hand-Based Triggers**: Effects activate based on played hand types
+- **Fallback Safety**: Uses defaults if YAML file missing/invalid
+
+### Effect Types
+
+#### AddMoney Jokers
+- **The Golden Joker** ($6): Earn $4 at the end of each Blind
+- **Effect**: Triggers after blind completion regardless of hands played
 - **ROI**: 66.7% return per blind (pays for itself in 1.5 blinds)
 
+#### AddChips Jokers
+- **Chip Collector** ($5): +30 chips if hand contains a Pair
+- **Two's Company** ($6): +50 chips if hand contains Two Pair
+- **Triple Threat** ($7): +80 chips if hand contains Three of a Kind
+- **Straight Shooter** ($8): +100 chips if hand contains a Straight
+- **Effect**: Adds to base score before multiplier application
+
+#### AddMult Jokers
+- **Double Down** ($4): +8 mult if hand contains a Pair
+- **Pair Paradise** ($5): +12 mult if hand contains Two Pair
+- **Three's a Charm** ($6): +15 mult if hand contains Three of a Kind
+- **Linear Logic** ($7): +20 mult if hand contains a Straight
+- **Effect**: Increases final multiplier for explosive scoring
+
+### Hand Matching Rules
+- **ContainsPair**: Triggers on Pair, Two Pair, Full House, Four of a Kind
+- **ContainsTwoPair**: Triggers on Two Pair, Full House
+- **ContainsThreeOfAKind**: Triggers on Three of a Kind, Full House, Four of a Kind
+- **ContainsStraight**: Triggers on Straight, Straight Flush, Royal Flush
+- **ContainsFlush**: Triggers on Flush, Straight Flush, Royal Flush
+- **ContainsFullHouse**: Triggers only on Full House
+- **ContainsFourOfAKind**: Triggers only on Four of a Kind
+- **None**: Always triggers (used for money jokers)
+
 ### Implementation Features
-- **Function-based effects**: Easy to add new joker types
+- **YAML Configuration**: Easy to add/modify jokers without coding
+- **Function-based effects**: Dynamic effect generation from config
 - **Modular design**: Each joker is self-contained
-- **Helper functions**: `PlayerHasJoker()`, `CalculateJokerRewards()`, etc.
-- **Future-ready**: Framework supports multiple joker types
+- **Helper functions**: `PlayerHasJoker()`, `CalculateJokerRewards()`, `CalculateJokerHandBonus()`
+- **Stacking Effects**: Multiple jokers can affect the same hand additively
 
 ---
 
@@ -202,9 +234,10 @@ The current implementation provides a solid foundation for:
 
 ### Next Logical Steps
 1. **Boss Blind Constraints**: Add special rules that make Boss Blinds unique
-2. **Additional Jokers**: Implement scoring-based jokers (not just money)
+2. **Extended Joker Effects**: Conditional triggers, card-specific bonuses, deck modifications
 3. **Tarot Cards**: One-time purchase items with immediate effects
 4. **Card Packs**: Purchase additional cards for deck building
+5. **Joker Rarity System**: Implement rarity-based shop appearance and effects
 
 ---
 
@@ -222,4 +255,61 @@ The current implementation provides a solid foundation for:
 - **Minimal memory**: Jokers stored as simple structs
 - **Fast UI**: Shop appears instantly between blinds
 
-This implementation brings Balatro CLI significantly closer to the authentic Balatro experience by adding the crucial economic layer that makes the game strategic beyond just poker hand evaluation.
+---
+
+## 🃏 YAML Joker System Implementation
+
+### Configuration Architecture
+```yaml
+jokers:
+  - name: "Joker Name"
+    value: 6                    # Shop price
+    rarity: "Common"            # Future expansion
+    effect: "AddChips"          # Effect type  
+    effect_magnitude: 30        # Effect strength
+    hand_matching_rule: "ContainsPair"  # Trigger condition
+    description: "Effect description"
+```
+
+### Technical Implementation
+```go
+type JokerEffect string
+const (
+    AddMoney JokerEffect = "AddMoney"
+    AddChips JokerEffect = "AddChips" 
+    AddMult  JokerEffect = "AddMult"
+)
+
+type HandMatchingRule string
+const (
+    ContainsPair HandMatchingRule = "ContainsPair"
+    ContainsStraight HandMatchingRule = "ContainsStraight"
+    // ... more rules
+)
+```
+
+### Scoring Integration
+- **Hand Evaluation**: Jokers checked during `EvaluateHand()`
+- **Effect Application**: `CalculateJokerHandBonus()` returns chips/mult bonuses
+- **Score Calculation**: `(base + joker_chips + cards) × (base_mult + joker_mult)`
+- **Visual Feedback**: Detailed breakdown shows joker contributions
+
+### Strategic Impact
+The YAML joker system transforms gameplay from simple optimization to complex strategic decisions:
+
+**Before**: "Play highest scoring hand possible"
+**After**: "Build joker synergies that multiply scoring potential over multiple blinds"
+
+**Example Decision Tree**:
+- Buy Chip Collector early for consistent pair bonuses
+- Save for Double Down to multiply pair effectiveness  
+- Consider Straight Shooter for high-stakes late game power
+- Balance economic jokers vs scoring jokers based on ante progression
+
+### Balance Configurability
+- **No Recompilation**: Edit `jokers.yaml` → restart game → changes active
+- **Rapid Iteration**: Test balance changes in seconds
+- **Community Sharing**: Players can share custom joker configs
+- **A/B Testing**: Easy to compare different joker power levels
+
+This implementation brings Balatro CLI significantly closer to the authentic Balatro experience by adding both the crucial economic layer AND the strategic depth of configurable joker synergies that make the game endlessly replayable.

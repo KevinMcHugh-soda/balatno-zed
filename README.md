@@ -136,8 +136,23 @@ Two Pair,20,2
 - Each row = one poker hand type
 - Columns: `hand` (exact name), `base` (base score), `mult` (multiplier)
 
+#### `jokers.yaml` - Joker Definitions
+```yaml
+jokers:
+  - name: "The Golden Joker"
+    value: 6
+    effect: "AddMoney"
+    effect_magnitude: 4
+    hand_matching_rule: "None"
+    description: "Earn $4 at the end of each Blind"
+```
+- **YAML format** for complex joker configurations
+- **Effect types**: `AddMoney`, `AddChips`, `AddMult`
+- **Hand matching**: Trigger jokers based on hand types (pairs, straights, etc.)
+- **Runtime loading** with fallback to defaults
+
 ### Making Balance Changes
-1. **Edit CSV files** with any text editor
+1. **Edit CSV/YAML files** with any text editor
 2. **Run the game** - changes load automatically
 3. **Test immediately** - no compilation needed!
 
@@ -164,7 +179,9 @@ Two Pair,20,2
 - **Invalid format?** Shows warning, continues with defaults
 - **Never crashes** due to configuration issues
 
-📖 **Full Documentation**: See `BALANCE_CONFIG.md` for detailed examples and advanced configuration tips.
+📖 **Full Documentation**: 
+- `BALANCE_CONFIG.md` - CSV balance configuration
+- `JOKER_CONFIG.md` - YAML joker system
 
 ## Money & Shop System
 
@@ -185,11 +202,25 @@ Between each blind, you visit the **🏪 Shop** where you can:
 - View your current money and owned Jokers
 - Choose to skip and save money for later
 
-### The Golden Joker
-**The Golden Joker** - *$6*
-- **Effect**: Earn $4 at the end of each Blind
-- **ROI**: Pays for itself in 1.5 blinds  
-- **Strategy**: Essential early-game purchase for economic snowballing
+### YAML Joker System
+**🃏 Configurable via `jokers.yaml`** - Add new jokers without coding!
+
+**Effect Types**:
+- **AddMoney**: Earn money at end of blinds
+- **AddChips**: Bonus base score for matching hands  
+- **AddMult**: Bonus multiplier for matching hands
+
+**Hand Matching Rules**:
+- `ContainsPair` - Triggers on Pair, Two Pair, Full House, etc.
+- `ContainsStraight` - Triggers on Straight, Straight Flush, Royal Flush
+- `ContainsFlush` - Triggers on Flush, Straight Flush, Royal Flush
+- Many more combinations available!
+
+**Example Jokers**:
+- **The Golden Joker** ($6): Earn $4 per blind
+- **Chip Collector** ($5): +30 chips for hands containing pairs
+- **Double Down** ($4): +8 mult for hands containing pairs
+- **Straight Shooter** ($8): +100 chips for hands containing straights
 
 ### Money Management Tips
 - **Efficiency Rewards**: Unused hands/discards = more money
@@ -302,7 +333,8 @@ The codebase is organized into focused, modular files:
 - **`deck.go`** - Card, Suit, Rank definitions and deck operations  
 - **`hands.go`** - Interface-based poker hand evaluation system
 - **`game.go`** - Ante/Blind progression, game loop, and player interaction
-- **`jokers.go`** - Joker system, shop mechanics, and The Golden Joker
+- **`jokers.go`** - YAML joker system, shop mechanics, and effect processing
+- **`jokers.yaml`** - Joker definitions and balance configuration
 
 ### Ante/Blind System
 
@@ -379,17 +411,17 @@ type HandEvaluator interface {
 
 ## Future Enhancements
 
-This implementation includes core progression with money/shop/joker systems. The full Balatro experience also includes:
+This implementation includes core progression with **YAML-configurable joker systems**. The full Balatro experience also includes:
 
 - **Boss Blind Effects**: Special rules and constraints for Boss Blinds *(coming soon!)*
-- **Additional Jokers**: Dozens more game-changing modifiers beyond The Golden Joker
+- **Extended Joker Effects**: Conditional triggers, card-specific bonuses, deck modifications
 - **Advanced Shop Items**: Tarot cards, Planet cards, and card packs
 - **Card Enhancements**: Foil, holographic, and other card modifications
 - **Vouchers**: Permanent upgrades and rule modifications
 - **Stakes**: Higher difficulty modes with additional constraints
 - **Endless Mode**: Continue beyond Ante 8 for ultimate challenges
 
-**✅ Currently Implemented**: Ante progression, money system, shop, The Golden Joker
+**✅ Currently Implemented**: Ante progression, money system, shop, **YAML joker system with 15+ configurable jokers**
 
 ---
 

@@ -108,6 +108,12 @@ func NewGame() *Game {
 		fmt.Printf("Warning: %v\n", err)
 	}
 
+	// Load joker configurations
+	if err := LoadJokerConfigs(); err != nil {
+		// Joker config loading failed, but we have fallback defaults
+		fmt.Printf("Warning: %v\n", err)
+	}
+
 	// Set initial target
 	game.currentTarget = GetAnteRequirement(game.currentAnte, game.currentBlind)
 
@@ -329,11 +335,36 @@ func (g *Game) handlePlayAction(params []string) {
 	hand := Hand{Cards: selectedCards}
 	evaluator, score, cardValues, baseScore := EvaluateHand(hand)
 
+	// Calculate joker bonuses
+	jokerChips, jokerMult := CalculateJokerHandBonus(g.jokers, evaluator.Name())
+
+	// Apply joker bonuses to final score
+	finalBaseScore := baseScore + jokerChips
+	finalMult := evaluator.Multiplier() + jokerMult
+	finalScore := (finalBaseScore + cardValues) * finalMult
+
 	fmt.Println()
 	fmt.Printf("Your hand: %s\n", hand)
 	fmt.Printf("Hand type: %s\n", evaluator.Name())
-	fmt.Printf("Base Score: %d | Card Values: %d | Mult: %dx\n", baseScore, cardValues, evaluator.Multiplier())
-	fmt.Printf("Final Score: (%d + %d) × %d = %d points\n", baseScore, cardValues, evaluator.Multiplier(), score)
+
+	if jokerChips > 0 || jokerMult > 0 {
+		fmt.Printf("Base Score: %d", baseScore)
+		if jokerChips > 0 {
+			fmt.Printf(" + %d Joker Chips", jokerChips)
+		}
+		fmt.Printf(" | Card Values: %d | Mult: %dx", cardValues, evaluator.Multiplier())
+		if jokerMult > 0 {
+			fmt.Printf(" + %d Joker Mult", jokerMult)
+		}
+		fmt.Printf("\n")
+		fmt.Printf("Final Score: (%d + %d) × %d = %d points\n", finalBaseScore, cardValues, finalMult, finalScore)
+	} else {
+		fmt.Printf("Base Score: %d | Card Values: %d | Mult: %dx\n", baseScore, cardValues, evaluator.Multiplier())
+		fmt.Printf("Final Score: (%d + %d) × %d = %d points\n", baseScore, cardValues, evaluator.Multiplier(), finalScore)
+	}
+
+	// Use the joker-modified score
+	score = finalScore
 
 	g.totalScore += score
 	g.handsPlayed++
@@ -553,13 +584,24 @@ func (g *Game) showShop() {
 	fmt.Println()
 
 	// Show available jokers
-	goldenJoker := GetGoldenJoker()
-	hasGoldenJoker := PlayerHasJoker(g.jokers, goldenJoker.Name)
+	availableJokers := GetAvailableJokers()
+	var affordableJokers []Joker
 
-	if !hasGoldenJoker {
-		fmt.Printf("1. %s - $%d\n", goldenJoker.Name, goldenJoker.Price)
-		fmt.Printf("   %s\n", goldenJoker.Description)
-		fmt.Println()
+	// Filter jokers player doesn't own and can afford
+	for _, joker := range availableJokers {
+		if !PlayerHasJoker(g.jokers, joker.Name) && g.money >= joker.Price {
+			affordableJokers = append(affordableJokers, joker)
+		}
+	}
+
+	// Show affordable jokers
+	if len(affordableJokers) > 0 {
+		fmt.Println("Available Jokers:")
+		for i, joker := range affordableJokers {
+			fmt.Printf("%d. %s - $%d\n", i+1, joker.Name, joker.Price)
+			fmt.Printf("   %s\n", joker.Description)
+			fmt.Println()
+		}
 	}
 
 	// Show current jokers
@@ -569,25 +611,41 @@ func (g *Game) showShop() {
 	}
 
 	// Shop interaction
-	if !hasGoldenJoker && g.money >= goldenJoker.Price {
-		fmt.Print("Buy (1) The Golden Joker, or (s)kip shop: ")
+	if len(affordableJokers) > 0 {
+		fmt.Printf("Buy joker (1-%d), or (s)kip shop: ", len(affordableJokers))
 		if g.scanner.Scan() {
 			input := strings.TrimSpace(strings.ToLower(g.scanner.Text()))
-			if input == "1" {
-				g.money -= goldenJoker.Price
-				g.jokers = append(g.jokers, goldenJoker)
-				fmt.Printf("✨ Purchased %s! ✨\n", goldenJoker.Name)
-				fmt.Printf("💰 Remaining money: $%d\n", g.money)
+			if input != "s" && input != "skip" {
+				if choice, err := strconv.Atoi(input); err == nil && choice >= 1 && choice <= len(affordableJokers) {
+					selectedJoker := affordableJokers[choice-1]
+					g.money -= selectedJoker.Price
+					g.jokers = append(g.jokers, selectedJoker)
+					fmt.Printf("✨ Purchased %s! ✨\n", selectedJoker.Name)
+					fmt.Printf("💰 Remaining money: $%d\n", g.money)
+				} else {
+					fmt.Println("Invalid choice. Skipped shop.")
+				}
 			} else {
 				fmt.Println("Skipped shop.")
 			}
 		}
-	} else if hasGoldenJoker {
-		fmt.Println("No new jokers available.")
-		fmt.Print("Press enter to continue...")
-		g.scanner.Scan()
 	} else {
-		fmt.Printf("Need $%d to buy The Golden Joker (you have $%d)\n", goldenJoker.Price, g.money)
+		// Show what jokers are available but unaffordable
+		var expensiveJokers []Joker
+		for _, joker := range availableJokers {
+			if !PlayerHasJoker(g.jokers, joker.Name) {
+				expensiveJokers = append(expensiveJokers, joker)
+			}
+		}
+
+		if len(expensiveJokers) > 0 {
+			fmt.Println("Jokers available (insufficient funds):")
+			for _, joker := range expensiveJokers {
+				fmt.Printf("   %s - $%d (need $%d more)\n", joker.Name, joker.Price, joker.Price-g.money)
+			}
+		} else {
+			fmt.Println("All available jokers already owned!")
+		}
 		fmt.Print("Press enter to continue...")
 		g.scanner.Scan()
 	}

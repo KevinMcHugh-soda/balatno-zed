@@ -1,0 +1,120 @@
+jokers:
+  - name: "The Golden Joker"
+    value: 6
+    rarity: "Common"
+    effect: "AddMoney"
+    effect_magnitude: 4
+    hand_matching_rule: "None"
+    description: "Earn $4 at the end of each Blind"
+
+  - name: "Chip Collector"
+    value: 5
+    rarity: "Common"
+    effect: "AddChips"
+    effect_magnitude: 30
+    hand_matching_rule: "ContainsPair"
+    description: "+30 Chips if played hand contains a Pair"
+
+  - name: "Double Down"
+    value: 4
+    rarity: "Common"
+    effect: "AddMult"
+    effect_magnitude: 8
+    hand_matching_rule: "ContainsPair"
+    description: "+8 Mult if played hand contains a Pair"
+
+  - name: "Two's Company"
+    value: 6
+    rarity: "Common"
+    effect: "AddChips"
+    effect_magnitude: 50
+    hand_matching_rule: "ContainsTwoPair"
+    description: "+50 Chips if played hand contains Two Pair"
+
+  - name: "Pair Paradise"
+    value: 5
+    rarity: "Common"
+    effect: "AddMult"
+    effect_magnitude: 12
+    hand_matching_rule: "ContainsTwoPair"
+    description: "+12 Mult if played hand contains Two Pair"
+
+  - name: "Triple Threat"
+    value: 7
+    rarity: "Common"
+    effect: "AddChips"
+    effect_magnitude: 80
+    hand_matching_rule: "ContainsThreeOfAKind"
+    description: "+80 Chips if played hand contains Three of a Kind"
+
+  - name: "Three's a Charm"
+    value: 6
+    rarity: "Common"
+    effect: "AddMult"
+    effect_magnitude: 15
+    hand_matching_rule: "ContainsThreeOfAKind"
+    description: "+15 Mult if played hand contains Three of a Kind"
+
+  - name: "Straight Shooter"
+    value: 8
+    rarity: "Common"
+    effect: "AddChips"
+    effect_magnitude: 100
+    hand_matching_rule: "ContainsStraight"
+    description: "+100 Chips if played hand contains a Straight"
+
+  - name: "Linear Logic"
+    value: 7
+    rarity: "Common"
+    effect: "AddMult"
+    effect_magnitude: 20
+    hand_matching_rule: "ContainsStraight"
+    description: "+20 Mult if played hand contains a Straight"
+
+  - name: "Flush Fund"
+    value: 8
+    rarity: "Common"
+    effect: "AddChips"
+    effect_magnitude: 90
+    hand_matching_rule: "ContainsFlush"
+    description: "+90 Chips if played hand contains a Flush"
+
+  - name: "Suit Yourself"
+    value: 7
+    rarity: "Common"
+    effect: "AddMult"
+    effect_magnitude: 18
+    hand_matching_rule: "ContainsFlush"
+    description: "+18 Mult if played hand contains a Flush"
+
+  - name: "House Money"
+    value: 10
+    rarity: "Common"
+    effect: "AddChips"
+    effect_magnitude: 120
+    hand_matching_rule: "ContainsFullHouse"
+    description: "+120 Chips if played hand contains a Full House"
+
+  - name: "Full Power"
+    value: 9
+    rarity: "Common"
+    effect: "AddMult"
+    effect_magnitude: 25
+    hand_matching_rule: "ContainsFullHouse"
+    description: "+25 Mult if played hand contains a Full House"
+
+  - name: "Quad Squad"
+    value: 12
+    rarity: "Common"
+    effect: "AddChips"
+    effect_magnitude: 150
+    hand_matching_rule: "ContainsFourOfAKind"
+    description: "+150 Chips if played hand contains Four of a Kind"
+
+  - name: "Fantastic Four"
+    value: 11
+    rarity: "Common"
+    effect: "AddMult"
+    effect_magnitude: 30
+    hand_matching_rule: "ContainsFourOfAKind"
+    description: "+30 Mult if played hand contains Four of a Kind"
