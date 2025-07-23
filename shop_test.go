@@ -32,7 +32,6 @@ func createTestGame(inputs []string) *Game {
 		money:      20, // Start with enough money for testing
 		rerollCost: 5,
 		jokers:     []Joker{},
-		scanner:    nil, // We'll handle input differently in tests
 	}
 	return game
 }

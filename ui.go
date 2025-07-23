@@ -17,6 +17,27 @@ type TerminalUI struct {
 	quit     bool
 }
 
+// Fixed layout positions
+const (
+	// Header section
+	titleRow    = 0
+	gameInfoRow = 2
+	scoreRow    = 3
+	moneyRow    = 4
+	handsRow    = 5
+	jokersRow   = 6
+
+	// Cards section
+	cardsHeaderRow = 8
+	cardsStartRow  = 9
+	cardsEndRow    = 12
+
+	// Input section (from bottom)
+	messageRow     = -2 // 2 rows from bottom
+	inputPromptRow = -4 // 4 rows from bottom
+	commandRow     = -5 // 5 rows from bottom
+)
+
 func NewTerminalUI(game *Game) (*TerminalUI, error) {
 	screen, err := tcell.NewScreen()
 	if err != nil {
@@ -31,8 +52,9 @@ func NewTerminalUI(game *Game) (*TerminalUI, error) {
 	screen.Clear()
 
 	return &TerminalUI{
-		screen: screen,
-		game:   game,
+		screen:  screen,
+		game:    game,
+		message: "🃏 Welcome to Balatro CLI! 🃏",
 	}, nil
 }
 
@@ -43,7 +65,6 @@ func (ui *TerminalUI) Close() {
 func (ui *TerminalUI) Run() {
 	defer ui.Close()
 
-	ui.message = "🃏 Welcome to Balatro CLI! 🃏"
 	ui.render()
 
 	for !ui.quit && ui.game.currentAnte <= MaxAntes {
@@ -79,36 +100,30 @@ func (ui *TerminalUI) Run() {
 }
 
 func (ui *TerminalUI) render() {
+	_, height := ui.screen.Size()
+
+	// Clear screen
 	ui.screen.Clear()
-	width, height := ui.screen.Size()
 
-	// Title section
-	ui.drawText(0, 0, width, "🃏 BALATRO CLI 🃏", tcell.StyleDefault.Foreground(tcell.ColorYellow).Bold(true))
-
-	// Game status section
-	statusY := 2
-	ui.drawGameStatus(0, statusY, width)
-
-	// Cards section
-	cardsY := statusY + 8
-	ui.drawCards(0, cardsY, width)
-
-	// Input section
-	inputY := height - 4
-	ui.drawInputSection(0, inputY, width)
-
-	// Message section
-	messageY := height - 2
-	ui.drawMessage(0, messageY, width)
+	// Render all static sections
+	ui.renderTitle()
+	ui.renderGameInfo()
+	ui.renderCards()
+	ui.renderInput(height)
+	ui.renderMessage(height)
 
 	ui.screen.Show()
 }
 
-func (ui *TerminalUI) drawGameStatus(x, y, width int) {
+func (ui *TerminalUI) renderTitle() {
+	ui.drawTextAt(0, titleRow, "🃏 BALATRO CLI 🃏",
+		tcell.StyleDefault.Foreground(tcell.ColorYellow).Bold(true))
+}
+
+func (ui *TerminalUI) renderGameInfo() {
+	// Get blind info with emoji
 	blind := ui.game.currentBlind
 	blindName := blind.String()
-
-	// Add blind emoji
 	blindEmoji := ""
 	switch blind {
 	case SmallBlind:
@@ -119,7 +134,12 @@ func (ui *TerminalUI) drawGameStatus(x, y, width int) {
 		blindEmoji = "💀"
 	}
 
-	// Create progress bar for score
+	// Ante and Blind info
+	ui.drawTextAt(0, gameInfoRow,
+		fmt.Sprintf("%s Ante: %d/%d | Blind: %s", blindEmoji, ui.game.currentAnte, MaxAntes, blindName),
+		tcell.StyleDefault.Foreground(tcell.ColorBlue))
+
+	// Score with progress bar
 	progress := float64(ui.game.totalScore) / float64(ui.game.currentTarget)
 	if progress > 1.0 {
 		progress = 1.0
@@ -137,46 +157,66 @@ func (ui *TerminalUI) drawGameStatus(x, y, width int) {
 	}
 	progressBar += "]"
 
-	lines := []string{
-		fmt.Sprintf("%s Ante: %d/%d | Blind: %s", blindEmoji, ui.game.currentAnte, MaxAntes, blindName),
-		fmt.Sprintf("🎯 Score: %d/%d %s (%.1f%%)", ui.game.totalScore, ui.game.currentTarget, progressBar, progress*100),
-		fmt.Sprintf("💰 Money: $%d", ui.game.money),
-		fmt.Sprintf("🎴 Hands Left: %d/%d | 🗑️ Discards Left: %d/%d", MaxHands-ui.game.handsPlayed, MaxHands, MaxDiscards-ui.game.discardsUsed, MaxDiscards),
-	}
+	ui.drawTextAt(0, scoreRow,
+		fmt.Sprintf("🎯 Score: %d/%d %s (%.1f%%)",
+			ui.game.totalScore, ui.game.currentTarget, progressBar, progress*100),
+		tcell.StyleDefault.Foreground(tcell.ColorGreen))
 
-	// Add jokers info if any
+	// Money
+	ui.drawTextAt(0, moneyRow,
+		fmt.Sprintf("💰 Money: $%d", ui.game.money),
+		tcell.StyleDefault.Foreground(tcell.ColorYellow))
+
+	// Hands and Discards
+	ui.drawTextAt(0, handsRow,
+		fmt.Sprintf("🎴 Hands Left: %d/%d | 🗑️ Discards Left: %d/%d",
+			MaxHands-ui.game.handsPlayed, MaxHands,
+			MaxDiscards-ui.game.discardsUsed, MaxDiscards),
+		tcell.StyleDefault.Foreground(tcell.ColorBlue))
+
+	// Jokers
+	jokersText := "🃏 Jokers: "
 	if len(ui.game.jokers) > 0 {
 		jokerNames := make([]string, len(ui.game.jokers))
 		for i, joker := range ui.game.jokers {
 			jokerNames[i] = joker.Name
 		}
-		lines = append(lines, fmt.Sprintf("🃏 Jokers: %s", strings.Join(jokerNames, ", ")))
+		jokersText += strings.Join(jokerNames, ", ")
+	} else {
+		jokersText += "None"
 	}
-
-	for i, line := range lines {
-		ui.drawText(x, y+i, width, line, tcell.StyleDefault.Foreground(tcell.ColorBlue))
-	}
+	ui.drawTextAt(0, jokersRow, jokersText, tcell.StyleDefault.Foreground(tcell.ColorRed))
 }
 
-func (ui *TerminalUI) drawCards(x, y, width int) {
-	ui.drawText(x, y, width, "Your Cards:", tcell.StyleDefault.Foreground(tcell.ColorGreen).Bold(true))
+func (ui *TerminalUI) renderCards() {
+	// Clear cards area first
+	for row := cardsHeaderRow; row <= cardsEndRow; row++ {
+		ui.clearRow(row)
+	}
+
+	// Cards header
+	sortMode := "rank"
+	if ui.game.sortMode == SortBySuit {
+		sortMode = "suit"
+	}
+	ui.drawTextAt(0, cardsHeaderRow,
+		fmt.Sprintf("Your Cards (sorted by %s):", sortMode),
+		tcell.StyleDefault.Foreground(tcell.ColorWhite).Bold(true))
 
 	if len(ui.game.playerCards) == 0 {
-		ui.drawText(x, y+1, width, "No cards", tcell.StyleDefault.Foreground(tcell.ColorRed))
+		ui.drawTextAt(0, cardsStartRow, "No cards", tcell.StyleDefault.Foreground(tcell.ColorRed))
 		return
 	}
 
-	// Create display mapping
+	// Create display mapping and sort cards
 	ui.game.displayToOriginal = make(map[string]int)
-
-	// Sort cards based on current sort mode
 	var sortedCards []indexedCard
 	for i, card := range ui.game.playerCards {
 		sortedCards = append(sortedCards, indexedCard{card: card, index: i})
 	}
 
+	// Sort based on current sort mode
 	if ui.game.sortMode == SortByRank {
-		// Sort by rank, then by suit
 		for i := 0; i < len(sortedCards)-1; i++ {
 			for j := i + 1; j < len(sortedCards); j++ {
 				if sortedCards[i].card.Rank > sortedCards[j].card.Rank ||
@@ -186,7 +226,6 @@ func (ui *TerminalUI) drawCards(x, y, width int) {
 			}
 		}
 	} else {
-		// Sort by suit, then by rank
 		for i := 0; i < len(sortedCards)-1; i++ {
 			for j := i + 1; j < len(sortedCards); j++ {
 				if sortedCards[i].card.Suit > sortedCards[j].card.Suit ||
@@ -197,13 +236,13 @@ func (ui *TerminalUI) drawCards(x, y, width int) {
 		}
 	}
 
-	// Display cards in rows
-	cardsPerRow := (width - 2) / 6 // Each card takes about 6 characters
-	if cardsPerRow < 1 {
-		cardsPerRow = 1
-	}
+	// Display cards in a fixed layout
+	cardsPerRow := 8
+	currentRow := cardsStartRow
 
+	cardText := ""
 	for i, indexedCard := range sortedCards {
+		// Use letter for display index
 		displayIndex := rune('A' + i)
 		if i >= 26 {
 			displayIndex = rune('a' + (i - 26))
@@ -211,59 +250,68 @@ func (ui *TerminalUI) drawCards(x, y, width int) {
 
 		ui.game.displayToOriginal[string(displayIndex)] = indexedCard.index
 
-		row := i / cardsPerRow
-		col := i % cardsPerRow
-
-		cardX := x + col*6
-		cardY := y + 1 + row
-
-		// Color cards by suit
-		var style tcell.Style
-		switch indexedCard.card.Suit {
-		case Spades, Clubs:
-			style = tcell.StyleDefault.Foreground(tcell.ColorWhite)
-		case Hearts, Diamonds:
-			style = tcell.StyleDefault.Foreground(tcell.ColorRed)
-		}
-
 		cardStr := fmt.Sprintf("%c:%s", displayIndex, indexedCard.card.String())
-		ui.drawText(cardX, cardY, width-cardX, cardStr, style)
-	}
 
-	// Show sort mode
-	sortMode := "rank"
-	if ui.game.sortMode == SortBySuit {
-		sortMode = "suit"
-	}
-	ui.drawText(x, y+1+((len(sortedCards)-1)/cardsPerRow)+1, width,
-		fmt.Sprintf("(Sorted by %s - use 'r' to toggle)", sortMode),
-		tcell.StyleDefault.Foreground(tcell.ColorGray))
-}
-
-func (ui *TerminalUI) drawInputSection(x, y, width int) {
-	var prompt string
-	if ui.game.discardsUsed >= MaxDiscards {
-		prompt = "Commands: (p)lay <cards>, (r)esort, (q)uit | Example: 'play A B C' or 'play 1 2 3'"
-	} else {
-		prompt = "Commands: (p)lay <cards>, (d)iscard <cards>, (r)esort, (q)uit | Example: 'play A B' or 'discard 1 2'"
-	}
-
-	ui.drawText(x, y, width, prompt, tcell.StyleDefault.Foreground(tcell.ColorWhite))
-	ui.drawText(x, y+1, width, "> "+ui.inputBuf+"_", tcell.StyleDefault.Foreground(tcell.ColorYellow))
-}
-
-func (ui *TerminalUI) drawMessage(x, y, width int) {
-	if ui.message != "" {
-		ui.drawText(x, y, width, ui.message, tcell.StyleDefault.Foreground(tcell.ColorPurple))
-	}
-}
-
-func (ui *TerminalUI) drawText(x, y, maxWidth int, text string, style tcell.Style) {
-	for i, r := range text {
-		if i >= maxWidth {
-			break
+		// Add spacing between cards
+		if i > 0 && i%cardsPerRow == 0 {
+			// Start new row
+			ui.drawTextAt(0, currentRow, cardText, tcell.StyleDefault.Foreground(tcell.ColorWhite))
+			currentRow++
+			cardText = ""
 		}
+
+		if cardText != "" {
+			cardText += "  "
+		}
+		cardText += cardStr
+	}
+
+	// Draw remaining cards
+	if cardText != "" {
+		ui.drawTextAt(0, currentRow, cardText, tcell.StyleDefault.Foreground(tcell.ColorWhite))
+	}
+}
+
+func (ui *TerminalUI) renderInput(screenHeight int) {
+	commandRow := screenHeight + commandRow
+	promptRow := screenHeight + inputPromptRow
+
+	// Clear input area
+	ui.clearRow(commandRow)
+	ui.clearRow(promptRow)
+
+	// Command help
+	var commandText string
+	if ui.game.discardsUsed >= MaxDiscards {
+		commandText = "Commands: (p)lay <cards>, (r)esort, (q)uit | Example: 'play A B C'"
+	} else {
+		commandText = "Commands: (p)lay <cards>, (d)iscard <cards>, (r)esort, (q)uit | Example: 'play A B'"
+	}
+	ui.drawTextAt(0, commandRow, commandText, tcell.StyleDefault.Foreground(tcell.ColorGray))
+
+	// Input prompt
+	ui.drawTextAt(0, promptRow, "> "+ui.inputBuf+"_", tcell.StyleDefault.Foreground(tcell.ColorYellow))
+}
+
+func (ui *TerminalUI) renderMessage(screenHeight int) {
+	msgRow := screenHeight + messageRow
+	ui.clearRow(msgRow)
+
+	if ui.message != "" {
+		ui.drawTextAt(0, msgRow, ui.message, tcell.StyleDefault.Foreground(tcell.ColorGreen))
+	}
+}
+
+func (ui *TerminalUI) drawTextAt(x, y int, text string, style tcell.Style) {
+	for i, r := range text {
 		ui.screen.SetContent(x+i, y, r, nil, style)
+	}
+}
+
+func (ui *TerminalUI) clearRow(y int) {
+	width, _ := ui.screen.Size()
+	for x := 0; x < width; x++ {
+		ui.screen.SetContent(x, y, ' ', nil, tcell.StyleDefault)
 	}
 }
 
@@ -303,7 +351,7 @@ func (ui *TerminalUI) processCommand() {
 
 	parts := strings.Fields(input)
 	if len(parts) < 1 {
-		ui.message = "Please enter 'play <cards>' or 'discard <cards>'"
+		ui.message = "Please enter a valid command"
 		return
 	}
 
@@ -341,7 +389,7 @@ func (ui *TerminalUI) processCommand() {
 
 func (ui *TerminalUI) handlePlayAction(params []string) {
 	if len(params) == 0 {
-		ui.message = "Please specify cards to play (e.g., 'play A B C' or 'play 1 2 3')"
+		ui.message = "Please specify cards to play (e.g., 'play A B C')"
 		return
 	}
 
@@ -351,7 +399,6 @@ func (ui *TerminalUI) handlePlayAction(params []string) {
 		return
 	}
 
-	// Use the existing game logic
 	oldScore := ui.game.totalScore
 	oldMoney := ui.game.money
 
@@ -374,7 +421,7 @@ func (ui *TerminalUI) handleDiscardAction(params []string) {
 	}
 
 	if len(params) == 0 {
-		ui.message = "Please specify cards to discard (e.g., 'discard A B' or 'discard 1 2')"
+		ui.message = "Please specify cards to discard (e.g., 'discard A B')"
 		return
 	}
 
@@ -384,16 +431,11 @@ func (ui *TerminalUI) handleDiscardAction(params []string) {
 		return
 	}
 
-	if len(indices) > len(ui.game.playerCards) {
-		ui.message = "Cannot discard more cards than you have"
-		return
-	}
-
 	oldDiscards := ui.game.discardsUsed
 	ui.game.handleDiscardAction(params)
 
 	if ui.game.discardsUsed > oldDiscards {
-		ui.message = fmt.Sprintf("🗑️ Discarded %d cards [%d/%d discards used]", len(indices), ui.game.discardsUsed, MaxDiscards)
+		ui.message = fmt.Sprintf("🗑️ Discarded %d cards", len(indices))
 	} else {
 		ui.message = "❌ Failed to discard cards"
 	}
@@ -410,7 +452,7 @@ func (ui *TerminalUI) handleResortAction() {
 
 func (ui *TerminalUI) parseCardSelection(params []string) []int {
 	var indices []int
-	seen := make(map[int]bool) // Prevent duplicate selections
+	seen := make(map[int]bool)
 
 	for _, param := range params {
 		var index int
