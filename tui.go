@@ -48,18 +48,21 @@ var (
 			Padding(1).
 			Margin(1, 1)
 
-	cardStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			Padding(0, 1).
+	heartsCardStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("196")).
 			Margin(0, 1)
 
-	redCardStyle = cardStyle.Copy().
-			BorderForeground(lipgloss.Color("196")).
-			Foreground(lipgloss.Color("196"))
+	diamondsCardStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("214")).
+				Margin(0, 1)
 
-	blackCardStyle = cardStyle.Copy().
-			BorderForeground(lipgloss.Color("240")).
-			Foreground(lipgloss.Color("240"))
+	clubsCardStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("21")).
+			Margin(0, 1)
+
+	spadesCardStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("240")).
+			Margin(0, 1)
 )
 
 // Init returns the initial command
@@ -213,29 +216,36 @@ func (m TUIModel) renderHand() string {
 
 	title := "🃏 Your Hand (7 cards):"
 
-	// Render cards in a row with better spacing
+	// Render cards as compact 2-character representations with position numbers
 	var cardViews []string
 	for i, card := range m.game.playerCards {
-		cardStr := fmt.Sprintf(" %d \n%s%s", i+1, card.Rank.String(), card.Suit.String())
+		cardStr := fmt.Sprintf("%s%s", card.Rank.String(), card.Suit.String())
 
 		var styledCard string
-		if card.Suit == Hearts || card.Suit == Diamonds {
-			styledCard = redCardStyle.Render(cardStr)
-		} else {
-			styledCard = blackCardStyle.Render(cardStr)
+		switch card.Suit {
+		case Hearts:
+			styledCard = heartsCardStyle.Render(cardStr)
+		case Diamonds:
+			styledCard = diamondsCardStyle.Render(cardStr)
+		case Clubs:
+			styledCard = clubsCardStyle.Render(cardStr)
+		case Spades:
+			styledCard = spadesCardStyle.Render(cardStr)
 		}
-		cardViews = append(cardViews, styledCard)
+
+		// Add position number below the card
+		positionNum := lipgloss.NewStyle().
+			Foreground(lipgloss.Color("244")).
+			Margin(0, 1).
+			Render(fmt.Sprintf("%d", i+1))
+
+		// Combine card and position number vertically
+		cardWithPos := lipgloss.JoinVertical(lipgloss.Center, styledCard, positionNum)
+		cardViews = append(cardViews, cardWithPos)
 	}
 
-	// Split cards into two rows if we have more than 4 cards for better layout
-	var cardsDisplay string
-	if len(cardViews) > 4 {
-		firstRow := lipgloss.JoinHorizontal(lipgloss.Top, cardViews[:4]...)
-		secondRow := lipgloss.JoinHorizontal(lipgloss.Top, cardViews[4:]...)
-		cardsDisplay = lipgloss.JoinVertical(lipgloss.Left, firstRow, secondRow)
-	} else {
-		cardsDisplay = lipgloss.JoinHorizontal(lipgloss.Top, cardViews...)
-	}
+	// Display all cards in a single row since they're now compact
+	cardsDisplay := lipgloss.JoinHorizontal(lipgloss.Top, cardViews...)
 
 	handContent := fmt.Sprintf("%s\n\n%s", title, cardsDisplay)
 	return handStyle.Render(handContent)
@@ -261,6 +271,9 @@ func (m TUIModel) renderHelp() string {
    • Hands: Number of plays remaining
    • Discards: Number of discards remaining
    • Money: Used for shop purchases
+   • Cards: Displayed as compact 2-char format (e.g., A♠, K♥)
+     - Hearts ♥: Red, Diamonds ♦: Orange
+     - Clubs ♣: Dark Blue, Spades ♠: Gray
 
 🎴 POKER HANDS (from weakest to strongest):
    • High Card      • Pair           • Two Pair
