@@ -8,6 +8,7 @@ import (
 func main() {
 	// Parse command line flags
 	seed := flag.Int64("seed", 0, "Set random seed for reproducible gameplay (0 for random)")
+	tui := flag.Bool("tui", false, "Run in TUI mode instead of console mode")
 	flag.Parse()
 
 	// Set seed if provided
@@ -16,7 +17,14 @@ func main() {
 		fmt.Printf("Using seed: %d\n", *seed)
 	}
 
-	// Create and run the game
-	game := NewGame()
-	game.Run()
+	// Run in TUI mode or console mode
+	if *tui {
+		if err := RunTUI(); err != nil {
+			fmt.Printf("Error running TUI: %v\n", err)
+		}
+	} else {
+		// Create and run the game
+		game := NewGame()
+		game.Run()
+	}
 }
