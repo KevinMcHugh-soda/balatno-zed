@@ -132,12 +132,6 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tickMsg:
 		m.currentTime = time.Time(msg)
 
-		// Clear status message after 3 seconds
-		if !m.statusMessageTime.IsZero() && time.Since(m.statusMessageTime) > 3*time.Second {
-			m.statusMessage = ""
-			m.statusMessageTime = time.Time{}
-		}
-
 		return m, tickCmd()
 	}
 
@@ -147,7 +141,7 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // View renders the UI
 func (m TUIModel) View() string {
 	if m.width == 0 || m.height == 0 {
-		return "Loading..."
+		return "Resize the window please..."
 	}
 
 	// Top bar
@@ -262,24 +256,6 @@ func (m TUIModel) renderHand() string {
 	}
 
 	var content strings.Builder
-
-	// Selected cards area - always reserve space
-	content.WriteString("🎯 Selected Cards:\n")
-	if len(m.selectedCards) > 0 {
-		var selectedViews []string
-		for _, index := range m.selectedCards {
-			if index >= 0 && index < len(m.game.playerCards) {
-				card := m.game.playerCards[index]
-				cardStr := m.renderCard(card, true)
-				selectedViews = append(selectedViews, cardStr)
-			}
-		}
-		selectedDisplay := lipgloss.JoinHorizontal(lipgloss.Top, selectedViews...)
-		content.WriteString(selectedDisplay)
-	} else {
-		content.WriteString("(none selected)")
-	}
-	content.WriteString("\n\n")
 
 	// Hand cards area - fixed position
 	content.WriteString(fmt.Sprintf("🃏 Your Hand (%d cards):\n", len(m.game.playerCards)))
@@ -572,7 +548,7 @@ func (m *TUIModel) handleDiscard() {
 
 // RunTUI starts the TUI application
 func RunTUI() error {
-	game := NewGame()
+	game := NewGame(PrintModeTUI)
 
 	// Initialize display-to-original mapping for TUI (1:1 since we don't sort)
 	game.displayToOriginal = make([]int, len(game.playerCards))

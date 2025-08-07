@@ -84,10 +84,18 @@ type Game struct {
 	money             int
 	jokers            []Joker
 	rerollCost        int
+	printMode         PrintMode
 }
 
+type PrintMode int
+
+const (
+	PrintModeLogger PrintMode = iota
+	PrintModeTUI
+)
+
 // NewGame creates a new game instance
-func NewGame() *Game {
+func NewGame(pm PrintMode) *Game {
 	deck := NewDeck()
 	ShuffleDeck(deck)
 
@@ -104,6 +112,7 @@ func NewGame() *Game {
 		money:        StartingMoney,
 		jokers:       []Joker{},
 		rerollCost:   5, // Initial reroll cost
+		printMode:    pm,
 	}
 
 	// Initialize random seed once
@@ -132,13 +141,25 @@ func NewGame() *Game {
 	return game
 }
 
+func (g *Game) Printf(format string, args ...any) {
+	if g.printMode == PrintModeLogger {
+		fmt.Printf(format, args...)
+	}
+}
+
+func (g *Game) Println(a ...any) {
+	if g.printMode == PrintModeLogger {
+		fmt.Println(a...)
+	}
+}
+
 // Run starts the main game loop
 func (g *Game) Run() {
-	fmt.Println("🃏 Welcome to Balatro CLI! 🃏")
-	fmt.Println("🎯 CHALLENGE: Progress through 8 Antes, each with 3 Blinds!")
-	fmt.Println("Each Ante: Small Blind → Big Blind → Boss Blind")
-	fmt.Println("Face cards (J, Q, K) = 10 points, Aces = 11 points")
-	fmt.Println()
+	g.Println("🃏 Welcome to Balatro CLI! 🃏")
+	g.Println("🎯 CHALLENGE: Progress through 8 Antes, each with 3 Blinds!")
+	g.Println("Each Ante: Small Blind → Big Blind → Boss Blind")
+	g.Println("Face cards (J, Q, K) = 10 points, Aces = 11 points")
+	g.Println()
 
 	gameRunning := true
 	for gameRunning && g.currentAnte <= MaxAntes {
@@ -212,12 +233,12 @@ func (g *Game) showGameStatus() {
 		blindEmoji = "💀"
 	}
 
-	fmt.Printf("%s Ante %d - %s\n", blindEmoji, g.currentAnte, g.currentBlind)
-	fmt.Printf("🎯 Target: %d | Score: %d %s (%.1f%%)\n",
+	g.Printf("%s Ante %d - %s\n", blindEmoji, g.currentAnte, g.currentBlind)
+	g.Printf("🎯 Target: %d | Score: %d %s (%.1f%%)\n",
 		g.currentTarget, g.totalScore, progressBar, progress*100)
-	fmt.Printf("🎴 Hands Left: %d | 🗑️  Discards Left: %d | 💰 Money: $%d\n",
+	g.Printf("🎴 Hands Left: %d | 🗑️  Discards Left: %d | 💰 Money: $%d\n",
 		MaxHands-g.handsPlayed, MaxDiscards-g.discardsUsed, g.money)
-	fmt.Println()
+	g.Println()
 }
 
 // showCards displays the player's current cards sorted by rank
@@ -256,24 +277,24 @@ func (g *Game) showCards() {
 	if g.sortMode == SortBySuit {
 		sortModeStr = "suit"
 	}
-	fmt.Printf("Your cards (sorted by %s):\n", sortModeStr)
+	g.Printf("Your cards (sorted by %s):\n", sortModeStr)
 	for i, ic := range indexed {
-		fmt.Printf("%d: %s\n", i+1, ic.card)
+		g.Printf("%d: %s\n", i+1, ic.card)
 	}
-	fmt.Println()
+	g.Println()
 }
 
 // getPlayerInput reads and parses player input
 func (g *Game) getPlayerInput() (string, []string, bool) {
 	if g.discardsUsed >= MaxDiscards {
-		fmt.Print("(p)lay <cards>, (r)esort, or (q)uit: ")
+		g.Printf("(p)lay <cards>, (r)esort, or (q)uit: ")
 	} else {
-		fmt.Print("(p)lay <cards>, (d)iscard <cards>, (r)esort, or (q)uit: ")
+		g.Printf("(p)lay <cards>, (d)iscard <cards>, (r)esort, or (q)uit: ")
 	}
 
 	if !g.scanner.Scan() {
 		if err := g.scanner.Err(); err != nil {
-			fmt.Println("Error reading input:", err)
+			g.Println("Error reading input:", err)
 		}
 		return "", nil, true
 	}
@@ -285,13 +306,13 @@ func (g *Game) getPlayerInput() (string, []string, bool) {
 	}
 
 	if input == "" {
-		fmt.Println("Please enter an action")
+		g.Println("Please enter an action")
 		return "", nil, false
 	}
 
 	parts := strings.Fields(input)
 	if len(parts) < 1 {
-		fmt.Println("Please enter 'play <cards>' or 'discard <cards>'")
+		g.Println("Please enter 'play <cards>' or 'discard <cards>'")
 		return "", nil, false
 	}
 
@@ -319,12 +340,12 @@ func (g *Game) getPlayerInput() (string, []string, bool) {
 // handlePlayAction processes a play action
 func (g *Game) handlePlayAction(params []string) {
 	if len(params) < 1 {
-		fmt.Println("Please specify cards to play: 'play 1 2 3'")
+		g.Println("Please specify cards to play: 'play 1 2 3'")
 		return
 	}
 
 	if len(params) > 5 {
-		fmt.Println("You can only play up to 5 cards!")
+		g.Println("You can only play up to 5 cards!")
 		return
 	}
 
@@ -334,7 +355,7 @@ func (g *Game) handlePlayAction(params []string) {
 	}
 
 	if len(selectedCards) == 0 {
-		fmt.Println("Please select at least one card!")
+		g.Println("Please select at least one card!")
 		return
 	}
 
@@ -350,24 +371,24 @@ func (g *Game) handlePlayAction(params []string) {
 	finalMult := evaluator.Multiplier() + jokerMult
 	finalScore := (finalBaseScore + cardValues) * finalMult
 
-	fmt.Println()
-	fmt.Printf("Your hand: %s\n", hand)
-	fmt.Printf("Hand type: %s\n", evaluator.Name())
+	g.Println()
+	g.Printf("Your hand: %s\n", hand)
+	g.Printf("Hand type: %s\n", evaluator.Name())
 
 	if jokerChips > 0 || jokerMult > 0 {
-		fmt.Printf("Base Score: %d", baseScore)
+		g.Printf("Base Score: %d", baseScore)
 		if jokerChips > 0 {
-			fmt.Printf(" + %d Joker Chips", jokerChips)
+			g.Printf(" + %d Joker Chips", jokerChips)
 		}
-		fmt.Printf(" | Card Values: %d | Mult: %dx", cardValues, evaluator.Multiplier())
+		g.Printf(" | Card Values: %d | Mult: %dx", cardValues, evaluator.Multiplier())
 		if jokerMult > 0 {
-			fmt.Printf(" + %d Joker Mult", jokerMult)
+			g.Printf(" + %d Joker Mult", jokerMult)
 		}
-		fmt.Printf("\n")
-		fmt.Printf("Final Score: (%d + %d) × %d = %d points\n", finalBaseScore, cardValues, finalMult, finalScore)
+		g.Printf("\n")
+		g.Printf("Final Score: (%d + %d) × %d = %d points\n", finalBaseScore, cardValues, finalMult, finalScore)
 	} else {
-		fmt.Printf("Base Score: %d | Card Values: %d | Mult: %dx\n", baseScore, cardValues, evaluator.Multiplier())
-		fmt.Printf("Final Score: (%d + %d) × %d = %d points\n", baseScore, cardValues, evaluator.Multiplier(), finalScore)
+		g.Printf("Base Score: %d | Card Values: %d | Mult: %dx\n", baseScore, cardValues, evaluator.Multiplier())
+		g.Printf("Final Score: (%d + %d) × %d = %d points\n", baseScore, cardValues, evaluator.Multiplier(), finalScore)
 	}
 
 	// Use the joker-modified score
@@ -376,9 +397,9 @@ func (g *Game) handlePlayAction(params []string) {
 	g.totalScore += score
 	g.handsPlayed++
 
-	fmt.Printf("💰 Total Score: %d/%d\n", g.totalScore, g.currentTarget)
-	fmt.Println(strings.Repeat("-", 50))
-	fmt.Println()
+	g.Printf("💰 Total Score: %d/%d\n", g.totalScore, g.currentTarget)
+	g.Println(strings.Repeat("-", 50))
+	g.Println()
 
 	// Remove played cards and deal new ones
 	g.removeAndDealCards(selectedIndices)
@@ -387,12 +408,12 @@ func (g *Game) handlePlayAction(params []string) {
 // handleDiscardAction processes a discard action
 func (g *Game) handleDiscardAction(params []string) {
 	if g.discardsUsed >= MaxDiscards {
-		fmt.Println("No discards remaining!")
+		g.Println("No discards remaining!")
 		return
 	}
 
 	if len(params) < 1 {
-		fmt.Println("Please specify cards to discard: 'discard 1 2'")
+		g.Println("Please specify cards to discard: 'discard 1 2'")
 		return
 	}
 
@@ -402,18 +423,18 @@ func (g *Game) handleDiscardAction(params []string) {
 	}
 
 	if len(selectedIndices) == 0 {
-		fmt.Println("Please select at least one card!")
+		g.Println("Please select at least one card!")
 		return
 	}
 
-	fmt.Printf("Discarded %d card(s)\n", len(selectedIndices))
+	g.Printf("Discarded %d card(s)\n", len(selectedIndices))
 	g.discardsUsed++
 
 	// Remove discarded cards and deal new ones
 	g.removeAndDealCards(selectedIndices)
 
-	fmt.Println("New cards dealt!")
-	fmt.Println()
+	g.Println("New cards dealt!")
+	g.Println()
 }
 
 // parseCardSelection parses card selection from string parameters
@@ -424,7 +445,7 @@ func (g *Game) parseCardSelection(params []string) ([]Card, []int, bool) {
 	for _, param := range params {
 		displayIndex, err := strconv.Atoi(param)
 		if err != nil || displayIndex < 1 || displayIndex > len(g.playerCards) {
-			fmt.Printf("Invalid card number: %s\n", param)
+			g.Printf("Invalid card number: %s\n", param)
 			return nil, nil, false
 		}
 		// Map display position to original position
@@ -479,25 +500,25 @@ func (g *Game) handleBlindCompletion() {
 	// Different celebrations for different blind types
 	switch g.currentBlind {
 	case SmallBlind:
-		fmt.Println(strings.Repeat("=", 60))
-		fmt.Println("🔸 SMALL BLIND DEFEATED! 🔸")
-		fmt.Printf("    ✨ Score: %d/%d ✨\n", g.totalScore, g.currentTarget)
-		fmt.Println("   🎯 Advancing to Big Blind...")
-		fmt.Println(strings.Repeat("=", 60))
+		g.Println(strings.Repeat("=", 60))
+		g.Println("🔸 SMALL BLIND DEFEATED! 🔸")
+		g.Printf("    ✨ Score: %d/%d ✨\n", g.totalScore, g.currentTarget)
+		g.Println("   🎯 Advancing to Big Blind...")
+		g.Println(strings.Repeat("=", 60))
 	case BigBlind:
-		fmt.Println(strings.Repeat("=", 60))
-		fmt.Println("🔶 BIG BLIND CRUSHED! 🔶")
-		fmt.Printf("    ⚡ Score: %d/%d ⚡\n", g.totalScore, g.currentTarget)
-		fmt.Println("   💀 Prepare for the Boss Blind...")
-		fmt.Println(strings.Repeat("=", 60))
+		g.Println(strings.Repeat("=", 60))
+		g.Println("🔶 BIG BLIND CRUSHED! 🔶")
+		g.Printf("    ⚡ Score: %d/%d ⚡\n", g.totalScore, g.currentTarget)
+		g.Println("   💀 Prepare for the Boss Blind...")
+		g.Println(strings.Repeat("=", 60))
 	case BossBlind:
-		fmt.Println(strings.Repeat("🎆", 15))
-		fmt.Println("💀 BOSS BLIND ANNIHILATED! 💀")
-		fmt.Printf("    🔥 EPIC SCORE: %d/%d 🔥\n", g.totalScore, g.currentTarget)
+		g.Println(strings.Repeat("🎆", 15))
+		g.Println("💀 BOSS BLIND ANNIHILATED! 💀")
+		g.Printf("    🔥 EPIC SCORE: %d/%d 🔥\n", g.totalScore, g.currentTarget)
 		if g.currentAnte < MaxAntes {
-			fmt.Printf("🎊 ANTE %d CONQUERED! 🎊\n", g.currentAnte)
+			g.Printf("🎊 ANTE %d CONQUERED! 🎊\n", g.currentAnte)
 		}
-		fmt.Println(strings.Repeat("🎆", 15))
+		g.Println(strings.Repeat("🎆", 15))
 	}
 
 	// Calculate and award money with detailed breakdown
@@ -519,16 +540,16 @@ func (g *Game) handleBlindCompletion() {
 
 	g.money += totalReward
 
-	fmt.Printf("💰 REWARD BREAKDOWN:\n")
-	fmt.Printf("   Base: $%d", baseReward)
+	g.Printf("💰 REWARD BREAKDOWN:\n")
+	g.Printf("   Base: $%d", baseReward)
 	if bonusReward > 0 {
-		fmt.Printf(" + Unused: $%d (%d hands + %d discards)", bonusReward, unusedHands, unusedDiscards)
+		g.Printf(" + Unused: $%d (%d hands + %d discards)", bonusReward, unusedHands, unusedDiscards)
 	}
 	if jokerReward > 0 {
-		fmt.Printf(" + Jokers: $%d", jokerReward)
+		g.Printf(" + Jokers: $%d", jokerReward)
 	}
-	fmt.Printf("\n   💰 Total Earned: $%d | Your Money: $%d\n", totalReward, g.money)
-	fmt.Println()
+	g.Printf("\n   💰 Total Earned: $%d | Your Money: $%d\n", totalReward, g.money)
+	g.Println()
 
 	// Advance to next blind
 	if g.currentBlind == SmallBlind {
@@ -540,10 +561,10 @@ func (g *Game) handleBlindCompletion() {
 		g.currentAnte++
 		g.currentBlind = SmallBlind
 		if g.currentAnte <= MaxAntes {
-			fmt.Println("🌟 ANTE PROGRESSION 🌟")
-			fmt.Printf("   Ante %d → Ante %d\n", g.currentAnte-1, g.currentAnte)
-			fmt.Println("🔄 NEW CHALLENGE AWAITS!")
-			fmt.Println()
+			g.Println("🌟 ANTE PROGRESSION 🌟")
+			g.Printf("   Ante %d → Ante %d\n", g.currentAnte-1, g.currentAnte)
+			g.Println("🔄 NEW CHALLENGE AWAITS!")
+			g.Println()
 		}
 	}
 
@@ -573,12 +594,12 @@ func (g *Game) handleBlindCompletion() {
 			blindEmoji = "💀"
 		}
 
-		fmt.Printf("%s NOW ENTERING: %s (Ante %d) %s\n",
+		g.Printf("%s NOW ENTERING: %s (Ante %d) %s\n",
 			blindEmoji, g.currentBlind, g.currentAnte, blindEmoji)
-		fmt.Printf("🎯 NEW TARGET: %d points\n", g.currentTarget)
-		fmt.Println("🃏 Fresh hand dealt!")
-		fmt.Println(strings.Repeat("-", 40))
-		fmt.Println()
+		g.Printf("🎯 NEW TARGET: %d points\n", g.currentTarget)
+		g.Println("🃏 Fresh hand dealt!")
+		g.Println(strings.Repeat("-", 40))
+		g.Println()
 
 		// Show shop between blinds
 		g.showShop()
@@ -598,11 +619,11 @@ func (g *Game) showShop() {
 
 	// If no jokers available, skip shop
 	if len(availableJokers) == 0 {
-		fmt.Println("🏪 SHOP 🏪")
-		fmt.Printf("💰 Your Money: $%d\n", g.money)
-		fmt.Println()
-		fmt.Println("All available jokers already owned!")
-		fmt.Print("Press enter to continue...")
+		g.Println("🏪 SHOP 🏪")
+		g.Printf("💰 Your Money: $%d\n", g.money)
+		g.Println()
+		g.Println("All available jokers already owned!")
+		g.Println("Press enter to continue...")
 		g.scanner.Scan()
 		return
 	}
@@ -626,9 +647,9 @@ func (g *Game) showShop() {
 	}
 
 	// Display shop once and handle single input
-	fmt.Println("🏪 SHOP 🏪")
-	fmt.Printf("💰 Your Money: $%d\n", g.money)
-	fmt.Println()
+	g.Println("🏪 SHOP 🏪")
+	g.Printf("💰 Your Money: $%d\n", g.money)
+	g.Println()
 
 	// Show shop items
 	availableSlots := 0
@@ -639,40 +660,40 @@ func (g *Game) showShop() {
 			if !canAfford {
 				affordText = " (can't afford)"
 			}
-			fmt.Printf("%d. %s - $%d%s\n", i+1, joker.Name, joker.Price, affordText)
-			fmt.Printf("   %s\n", joker.Description)
-			fmt.Println()
+			g.Printf("%d. %s - $%d%s\n", i+1, joker.Name, joker.Price, affordText)
+			g.Printf("   %s\n", joker.Description)
+			g.Println()
 			availableSlots++
 		}
 	}
 
 	// Show current jokers
 	if len(g.jokers) > 0 {
-		fmt.Printf("🃏 Your Jokers: %s\n", FormatJokersList(g.jokers))
-		fmt.Println()
+		g.Printf("🃏 Your Jokers: %s\n", FormatJokersList(g.jokers))
+		g.Println()
 	}
 
 	// If no items left, exit shop
 	if availableSlots == 0 {
-		fmt.Println("Shop sold out!")
-		fmt.Print("Press enter to continue...")
+		g.Println("Shop sold out!")
+		g.Println("Press enter to continue...")
 		g.scanner.Scan()
 		return
 	}
 
 	// Show options and handle single input
-	fmt.Printf("Buy item (1-%d), (r)eroll ($%d), or (s)kip shop: ", len(shopItems), g.rerollCost)
+	g.Printf("Buy item (1-%d), (r)eroll ($%d), or (s)kip shop: ", len(shopItems), g.rerollCost)
 
 	if g.scanner.Scan() {
 		input := strings.TrimSpace(strings.ToLower(g.scanner.Text()))
 
 		if input == "s" || input == "skip" {
-			fmt.Println("Skipped shop.")
+			g.Println("Skipped shop.")
 			return
 		} else if input == "r" || input == "reroll" {
 			if g.money >= g.rerollCost {
 				g.money -= g.rerollCost
-				fmt.Printf("💫 Rerolled for $%d!\n", g.rerollCost)
+				g.Printf("💫 Rerolled for $%d!\n", g.rerollCost)
 				g.rerollCost++ // Increase cost for next reroll
 
 				// Generate new shop items
@@ -692,28 +713,28 @@ func (g *Game) showShop() {
 					shopItems = availableJokers
 				}
 
-				fmt.Printf("💰 Remaining money: $%d (Next reroll: $%d)\n", g.money, g.rerollCost)
-				fmt.Println()
+				g.Printf("💰 Remaining money: $%d (Next reroll: $%d)\n", g.money, g.rerollCost)
+				g.Println()
 
 				// Recursively call shop to show new items
 				g.showShopWithItems(availableJokers, shopItems)
 				return
 			} else {
-				fmt.Printf("Not enough money to reroll! Need $%d more.\n", g.rerollCost-g.money)
+				g.Printf("Not enough money to reroll! Need $%d more.\n", g.rerollCost-g.money)
 				return
 			}
 		} else if choice, err := strconv.Atoi(input); err == nil && choice >= 1 && choice <= len(shopItems) {
 			selectedJoker := shopItems[choice-1]
 			if selectedJoker.Name == "" {
-				fmt.Println("That slot is empty!")
+				g.Println("That slot is empty!")
 				return
 			}
 
 			if g.money >= selectedJoker.Price {
 				g.money -= selectedJoker.Price
 				g.jokers = append(g.jokers, selectedJoker)
-				fmt.Printf("✨ Purchased %s! ✨\n", selectedJoker.Name)
-				fmt.Printf("💰 Remaining money: $%d\n", g.money)
+				g.Printf("✨ Purchased %s! ✨\n", selectedJoker.Name)
+				g.Printf("💰 Remaining money: $%d\n", g.money)
 
 				// Remove purchased item from shop
 				shopItems[choice-1] = Joker{} // Empty slot
@@ -726,17 +747,17 @@ func (g *Game) showShop() {
 					}
 				}
 
-				fmt.Println()
+				g.Println()
 
 				// Recursively call shop to allow more purchases
 				g.showShopWithItems(availableJokers, shopItems)
 				return
 			} else {
-				fmt.Printf("Not enough money! Need $%d more.\n", selectedJoker.Price-g.money)
+				g.Printf("Not enough money! Need $%d more.\n", selectedJoker.Price-g.money)
 				return
 			}
 		} else {
-			fmt.Println("Invalid choice.")
+			g.Println("Invalid choice.")
 			return
 		}
 	}
@@ -745,9 +766,9 @@ func (g *Game) showShop() {
 // showShopWithItems is a helper function to continue shop with specific items
 func (g *Game) showShopWithItems(availableJokers []Joker, shopItems []Joker) {
 	// Display shop with current items
-	fmt.Println("🏪 SHOP 🏪")
-	fmt.Printf("💰 Your Money: $%d\n", g.money)
-	fmt.Println()
+	g.Println("🏪 SHOP 🏪")
+	g.Printf("💰 Your Money: $%d\n", g.money)
+	g.Println()
 
 	// Show shop items
 	availableSlots := 0
@@ -758,40 +779,40 @@ func (g *Game) showShopWithItems(availableJokers []Joker, shopItems []Joker) {
 			if !canAfford {
 				affordText = " (can't afford)"
 			}
-			fmt.Printf("%d. %s - $%d%s\n", i+1, joker.Name, joker.Price, affordText)
-			fmt.Printf("   %s\n", joker.Description)
-			fmt.Println()
+			g.Printf("%d. %s - $%d%s\n", i+1, joker.Name, joker.Price, affordText)
+			g.Printf("   %s\n", joker.Description)
+			g.Println()
 			availableSlots++
 		}
 	}
 
 	// Show current jokers
 	if len(g.jokers) > 0 {
-		fmt.Printf("🃏 Your Jokers: %s\n", FormatJokersList(g.jokers))
-		fmt.Println()
+		g.Printf("🃏 Your Jokers: %s\n", FormatJokersList(g.jokers))
+		g.Println()
 	}
 
 	// If no items left, exit shop
 	if availableSlots == 0 {
-		fmt.Println("Shop sold out!")
-		fmt.Print("Press enter to continue...")
+		g.Println("Shop sold out!")
+		g.Println("Press enter to continue...")
 		g.scanner.Scan()
 		return
 	}
 
 	// Show options and handle single input
-	fmt.Printf("Buy item (1-%d), (r)eroll ($%d), or (s)kip shop: ", len(shopItems), g.rerollCost)
+	g.Printf("Buy item (1-%d), (r)eroll ($%d), or (s)kip shop: ", len(shopItems), g.rerollCost)
 
 	if g.scanner.Scan() {
 		input := strings.TrimSpace(strings.ToLower(g.scanner.Text()))
 
 		if input == "s" || input == "skip" {
-			fmt.Println("Skipped shop.")
+			g.Println("Skipped shop.")
 			return
 		} else if input == "r" || input == "reroll" {
 			if g.money >= g.rerollCost {
 				g.money -= g.rerollCost
-				fmt.Printf("💫 Rerolled for $%d!\n", g.rerollCost)
+				g.Printf("💫 Rerolled for $%d!\n", g.rerollCost)
 				g.rerollCost++ // Increase cost for next reroll
 
 				// Generate new shop items
@@ -811,28 +832,28 @@ func (g *Game) showShopWithItems(availableJokers []Joker, shopItems []Joker) {
 					shopItems = availableJokers
 				}
 
-				fmt.Printf("💰 Remaining money: $%d (Next reroll: $%d)\n", g.money, g.rerollCost)
-				fmt.Println()
+				g.Printf("💰 Remaining money: $%d (Next reroll: $%d)\n", g.money, g.rerollCost)
+				g.Println()
 
 				// Recursively call shop to show new items
 				g.showShopWithItems(availableJokers, shopItems)
 				return
 			} else {
-				fmt.Printf("Not enough money to reroll! Need $%d more.\n", g.rerollCost-g.money)
+				g.Printf("Not enough money to reroll! Need $%d more.\n", g.rerollCost-g.money)
 				return
 			}
 		} else if choice, err := strconv.Atoi(input); err == nil && choice >= 1 && choice <= len(shopItems) {
 			selectedJoker := shopItems[choice-1]
 			if selectedJoker.Name == "" {
-				fmt.Println("That slot is empty!")
+				g.Println("That slot is empty!")
 				return
 			}
 
 			if g.money >= selectedJoker.Price {
 				g.money -= selectedJoker.Price
 				g.jokers = append(g.jokers, selectedJoker)
-				fmt.Printf("✨ Purchased %s! ✨\n", selectedJoker.Name)
-				fmt.Printf("💰 Remaining money: $%d\n", g.money)
+				g.Printf("✨ Purchased %s! ✨\n", selectedJoker.Name)
+				g.Printf("💰 Remaining money: $%d\n", g.money)
 
 				// Remove purchased item from shop
 				shopItems[choice-1] = Joker{} // Empty slot
@@ -845,17 +866,17 @@ func (g *Game) showShopWithItems(availableJokers []Joker, shopItems []Joker) {
 					}
 				}
 
-				fmt.Println()
+				g.Println()
 
 				// Recursively call shop to allow more purchases
 				g.showShopWithItems(availableJokers, shopItems)
 				return
 			} else {
-				fmt.Printf("Not enough money! Need $%d more.\n", selectedJoker.Price-g.money)
+				g.Printf("Not enough money! Need $%d more.\n", selectedJoker.Price-g.money)
 				return
 			}
 		} else {
-			fmt.Println("Invalid choice.")
+			g.Println("Invalid choice.")
 			return
 		}
 	}
@@ -863,22 +884,22 @@ func (g *Game) showShopWithItems(availableJokers []Joker, shopItems []Joker) {
 
 // showGameResults displays the final game results for a failed blind
 func (g *Game) showGameResults() {
-	fmt.Println(strings.Repeat("=", 50))
-	fmt.Println("💀 DEFEAT! You failed to beat the blind.")
-	fmt.Printf("Final Score: %d/%d (Ante %d - %s)\n", g.totalScore, g.currentTarget, g.currentAnte, g.currentBlind)
-	fmt.Printf("Hands Played: %d/%d\n", g.handsPlayed, MaxHands)
-	fmt.Printf("Discards Used: %d/%d\n", g.discardsUsed, MaxDiscards)
-	fmt.Println(strings.Repeat("=", 50))
+	g.Println(strings.Repeat("=", 50))
+	g.Println("💀 DEFEAT! You failed to beat the blind.")
+	g.Printf("Final Score: %d/%d (Ante %d - %s)\n", g.totalScore, g.currentTarget, g.currentAnte, g.currentBlind)
+	g.Printf("Hands Played: %d/%d\n", g.handsPlayed, MaxHands)
+	g.Printf("Discards Used: %d/%d\n", g.discardsUsed, MaxDiscards)
+	g.Println(strings.Repeat("=", 50))
 }
 
 // showVictoryResults displays the final victory results
 func (g *Game) showVictoryResults() {
-	fmt.Println(strings.Repeat("=", 60))
-	fmt.Println("🏆 ULTIMATE VICTORY! 🏆")
-	fmt.Println("🎉 You have conquered all 8 Antes! 🎉")
-	fmt.Printf("Final Ante: %d\n", MaxAntes)
-	fmt.Println("You are a true Balatro master!")
-	fmt.Println(strings.Repeat("=", 60))
+	g.Println(strings.Repeat("=", 60))
+	g.Println("🏆 ULTIMATE VICTORY! 🏆")
+	g.Println("🎉 You have conquered all 8 Antes! 🎉")
+	g.Printf("Final Ante: %d\n", MaxAntes)
+	g.Println("You are a true Balatro master!")
+	g.Println(strings.Repeat("=", 60))
 }
 
 // removeCards removes cards at specified indices and returns the new slice
@@ -902,10 +923,10 @@ func removeCards(cards []Card, indices []int) []Card {
 func (g *Game) handleResortAction() {
 	if g.sortMode == SortByRank {
 		g.sortMode = SortBySuit
-		fmt.Println("Cards now sorted by suit")
+		g.Println("Cards now sorted by suit")
 	} else {
 		g.sortMode = SortByRank
-		fmt.Println("Cards now sorted by rank")
+		g.Println("Cards now sorted by rank")
 	}
-	fmt.Println()
+	g.Println()
 }

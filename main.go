@@ -24,7 +24,7 @@ func main() {
 		}
 	} else {
 		// Create and run the game
-		game := NewGame()
+		game := NewGame(PrintModeLogger)
 		game.Run()
 	}
 }
