@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"log"
 	"math/rand"
 	"os"
 	"sort"
@@ -85,6 +86,7 @@ type Game struct {
 	jokers            []Joker
 	rerollCost        int
 	printMode         PrintMode
+	logger            log.Logger
 }
 
 type PrintMode int
@@ -144,12 +146,16 @@ func NewGame(pm PrintMode) *Game {
 func (g *Game) Printf(format string, args ...any) {
 	if g.printMode == PrintModeLogger {
 		fmt.Printf(format, args...)
+	} else {
+		g.logger.Printf(format, args...)
 	}
 }
 
 func (g *Game) Println(a ...any) {
 	if g.printMode == PrintModeLogger {
 		fmt.Println(a...)
+	} else {
+		g.logger.Println(a...)
 	}
 }
 
