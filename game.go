@@ -81,7 +81,7 @@ type Game struct {
 	money             int
 	jokers            []Joker
 	rerollCost        int
-	io                GameIO
+	eventEmitter      *SimpleEventEmitter
 }
 
 type PrintMode int
@@ -92,7 +92,7 @@ const (
 )
 
 // NewGame creates a new game instance
-func NewGame(gameIO GameIO) *Game {
+func NewGame(eventHandler EventHandler) *Game {
 	deck := NewDeck()
 	ShuffleDeck(deck)
 
@@ -108,7 +108,7 @@ func NewGame(gameIO GameIO) *Game {
 		money:        StartingMoney,
 		jokers:       []Joker{},
 		rerollCost:   5, // Initial reroll cost
-		io:           gameIO,
+		eventEmitter: NewEventEmitter(),
 	}
 
 	// Initialize random seed once
@@ -140,23 +140,28 @@ func NewGame(gameIO GameIO) *Game {
 		game.displayToOriginal[i] = i
 	}
 
+	// Set the event handler
+	game.eventEmitter.SetEventHandler(eventHandler)
+
 	return game
 }
 
 // Run starts the main game loop
 func (g *Game) Run() {
-	g.io.ShowWelcome()
+	g.eventEmitter.EmitGameStarted()
 
 	gameRunning := true
 	for gameRunning && g.currentAnte <= MaxAntes {
 		for g.handsPlayed < MaxHands && g.totalScore < g.currentTarget {
-			g.io.ShowGameStatus(g.currentAnte, g.currentBlind, g.currentTarget, g.totalScore,
+			// Update display mapping and emit current state
+			g.updateDisplayToOriginalMapping()
+			g.eventEmitter.EmitGameState(g.currentAnte, g.currentBlind, g.currentTarget, g.totalScore,
 				MaxHands-g.handsPlayed, MaxDiscards-g.discardsUsed, g.money, g.jokers)
-			g.io.ShowCards(g.playerCards, g.displayToOriginal)
+			g.eventEmitter.EmitCardsDealt(g.playerCards, g.displayToOriginal, g.sortMode)
 
-			action, params, quit := g.io.GetPlayerAction(g.discardsUsed < MaxDiscards)
+			action, params, quit := g.eventEmitter.handler.GetPlayerAction(g.discardsUsed < MaxDiscards)
 			if quit {
-				g.io.ShowMessage("Thanks for playing!")
+				g.eventEmitter.EmitInfo("Thanks for playing!")
 				gameRunning = false
 				break
 			}
@@ -179,16 +184,20 @@ func (g *Game) Run() {
 			g.handleBlindCompletion()
 		} else {
 			// Failed to beat the blind
-			g.io.ShowGameResults(g.totalScore, g.currentTarget, g.currentAnte)
+			g.eventEmitter.EmitEvent(GameOverEvent{
+				FinalScore: g.totalScore,
+				Target:     g.currentTarget,
+				Ante:       g.currentAnte,
+			})
 			break
 		}
 	}
 
 	if gameRunning && g.currentAnte > MaxAntes {
-		g.io.ShowVictoryResults()
+		g.eventEmitter.EmitEvent(VictoryEvent{})
 	}
 
-	g.io.Close()
+	g.eventEmitter.handler.Close()
 }
 
 // updateDisplayToOriginalMapping sorts cards and updates the display mapping
@@ -230,12 +239,18 @@ func (g *Game) updateDisplayToOriginalMapping() {
 // handlePlayAction processes a play action
 func (g *Game) handlePlayAction(params []string) {
 	if len(params) < 1 {
-		g.io.ShowMessage("Please specify cards to play: 'play 1 2 3'")
+		g.eventEmitter.EmitEvent(InvalidActionEvent{
+			Action: "play",
+			Reason: "Please specify cards to play: 'play 1 2 3'",
+		})
 		return
 	}
 
 	if len(params) > 5 {
-		g.io.ShowMessage("You can only play up to 5 cards!")
+		g.eventEmitter.EmitEvent(InvalidActionEvent{
+			Action: "play",
+			Reason: "You can only play up to 5 cards!",
+		})
 		return
 	}
 
@@ -245,7 +260,10 @@ func (g *Game) handlePlayAction(params []string) {
 	}
 
 	if len(selectedCards) == 0 {
-		g.io.ShowMessage("Please select at least one card!")
+		g.eventEmitter.EmitEvent(InvalidActionEvent{
+			Action: "play",
+			Reason: "Please select at least one card!",
+		})
 		return
 	}
 
@@ -261,33 +279,22 @@ func (g *Game) handlePlayAction(params []string) {
 	finalMult := evaluator.Multiplier() + jokerMult
 	finalScore := (finalBaseScore + cardValues) * finalMult
 
-	var message strings.Builder
-	message.WriteString(fmt.Sprintf("\nYour hand: %s\n", hand))
-	message.WriteString(fmt.Sprintf("Hand type: %s\n", evaluator.Name()))
+	// Emit hand played event with all the details
+	g.eventEmitter.EmitEvent(HandPlayedEvent{
+		SelectedCards: selectedCards,
+		HandType:      evaluator.Name(),
+		BaseScore:     baseScore,
+		CardValues:    cardValues,
+		Multiplier:    evaluator.Multiplier(),
+		JokerChips:    jokerChips,
+		JokerMult:     jokerMult,
+		FinalScore:    finalScore,
+		NewTotalScore: g.totalScore + finalScore,
+	})
 
-	if jokerChips > 0 || jokerMult > 0 {
-		message.WriteString(fmt.Sprintf("Base Score: %d", baseScore))
-		if jokerChips > 0 {
-			message.WriteString(fmt.Sprintf(" + %d Joker Chips", jokerChips))
-		}
-		message.WriteString(fmt.Sprintf(" | Card Values: %d | Mult: %dx", cardValues, evaluator.Multiplier()))
-		if jokerMult > 0 {
-			message.WriteString(fmt.Sprintf(" + %d Joker Mult", jokerMult))
-		}
-		message.WriteString("\n")
-		message.WriteString(fmt.Sprintf("Final Score: (%d + %d) × %d = %d points\n", finalBaseScore, cardValues, finalMult, finalScore))
-	} else {
-		message.WriteString(fmt.Sprintf("Base Score: %d | Card Values: %d | Mult: %dx\n", baseScore, cardValues, evaluator.Multiplier()))
-		message.WriteString(fmt.Sprintf("Final Score: (%d + %d) × %d = %d points\n", baseScore, cardValues, evaluator.Multiplier(), finalScore))
-	}
-
-	// Use the joker-modified score
+	// Update game state
 	g.totalScore += finalScore
 	g.handsPlayed++
-
-	message.WriteString(fmt.Sprintf("💰 Total Score: %d/%d\n", g.totalScore, g.currentTarget))
-	message.WriteString(strings.Repeat("-", 50))
-	g.io.ShowMessage(message.String())
 
 	// Remove played cards and deal new ones
 	g.removeAndDealCards(selectedIndices)
@@ -296,32 +303,46 @@ func (g *Game) handlePlayAction(params []string) {
 // handleDiscardAction processes a discard action
 func (g *Game) handleDiscardAction(params []string) {
 	if g.discardsUsed >= MaxDiscards {
-		g.io.ShowMessage("No discards remaining!")
+		g.eventEmitter.EmitEvent(InvalidActionEvent{
+			Action: "discard",
+			Reason: "No discards remaining!",
+		})
 		return
 	}
 
 	if len(params) < 1 {
-		g.io.ShowMessage("Please specify cards to discard: 'discard 1 2'")
+		g.eventEmitter.EmitEvent(InvalidActionEvent{
+			Action: "discard",
+			Reason: "Please specify cards to discard: 'discard 1 2'",
+		})
 		return
 	}
 
-	_, selectedIndices, valid := g.parseCardSelection(params)
+	selectedCards, selectedIndices, valid := g.parseCardSelection(params)
 	if !valid {
 		return
 	}
 
 	if len(selectedIndices) == 0 {
-		g.io.ShowMessage("Please select at least one card!")
+		g.eventEmitter.EmitEvent(InvalidActionEvent{
+			Action: "discard",
+			Reason: "Please select at least one card!",
+		})
 		return
 	}
 
-	g.io.ShowMessage(fmt.Sprintf("Discarded %d card(s)", len(selectedIndices)))
+	// Update discard count
 	g.discardsUsed++
+
+	// Emit discard event before removing cards
+	g.eventEmitter.EmitEvent(CardsDiscardedEvent{
+		DiscardedCards: selectedCards,
+		NumCards:       len(selectedCards),
+		DiscardsLeft:   MaxDiscards - g.discardsUsed,
+	})
 
 	// Remove discarded cards and deal new ones
 	g.removeAndDealCards(selectedIndices)
-
-	g.io.ShowMessage("New cards dealt!")
 }
 
 // parseCardSelection parses card selection from string parameters
@@ -332,7 +353,10 @@ func (g *Game) parseCardSelection(params []string) ([]Card, []int, bool) {
 	for _, param := range params {
 		displayIndex, err := strconv.Atoi(param)
 		if err != nil || displayIndex < 1 || displayIndex > len(g.playerCards) {
-			g.io.ShowMessage(fmt.Sprintf("Invalid card number: %s", param))
+			g.eventEmitter.EmitEvent(InvalidActionEvent{
+				Action: "card_selection",
+				Reason: fmt.Sprintf("Invalid card number: %s", param),
+			})
 			return nil, nil, false
 		}
 		// Map display position to original position
@@ -384,25 +408,6 @@ func (g *Game) calculateBlindReward() int {
 
 // handleBlindCompletion handles completing a blind and advancing to the next
 func (g *Game) handleBlindCompletion() {
-	// Different celebrations for different blind types
-	// Show completion message based on blind type
-	var completionMsg string
-	switch g.currentBlind {
-	case SmallBlind:
-		completionMsg = fmt.Sprintf("%s\n🔸 SMALL BLIND DEFEATED! 🔸\n    ✨ Score: %d/%d ✨\n   🎯 Advancing to Big Blind...\n%s",
-			strings.Repeat("=", 60), g.totalScore, g.currentTarget, strings.Repeat("=", 60))
-	case BigBlind:
-		completionMsg = fmt.Sprintf("%s\n🔶 BIG BLIND CRUSHED! 🔶\n    ⚡ Score: %d/%d ⚡\n   💀 Prepare for the Boss Blind...\n%s",
-			strings.Repeat("=", 60), g.totalScore, g.currentTarget, strings.Repeat("=", 60))
-	case BossBlind:
-		anteMsg := ""
-		if g.currentAnte < MaxAntes {
-			anteMsg = fmt.Sprintf("\n🎊 ANTE %d CONQUERED! 🎊", g.currentAnte)
-		}
-		completionMsg = fmt.Sprintf("%s\n💀 BOSS BLIND ANNIHILATED! 💀\n    🔥 EPIC SCORE: %d/%d 🔥%s\n%s",
-			strings.Repeat("🎆", 15), g.totalScore, g.currentTarget, anteMsg, strings.Repeat("🎆", 15))
-	}
-	g.io.ShowMessage(completionMsg)
 
 	// Calculate and award money with detailed breakdown
 	var baseReward int
@@ -423,17 +428,19 @@ func (g *Game) handleBlindCompletion() {
 
 	g.money += totalReward
 
-	var rewardMsg strings.Builder
-	rewardMsg.WriteString("💰 REWARD BREAKDOWN:\n")
-	rewardMsg.WriteString(fmt.Sprintf("   Base: $%d", baseReward))
-	if bonusReward > 0 {
-		rewardMsg.WriteString(fmt.Sprintf(" + Unused: $%d (%d hands + %d discards)", bonusReward, unusedHands, unusedDiscards))
-	}
-	if jokerReward > 0 {
-		rewardMsg.WriteString(fmt.Sprintf(" + Jokers: $%d", jokerReward))
-	}
-	rewardMsg.WriteString(fmt.Sprintf("\n   💰 Total Earned: $%d | Your Money: $%d", totalReward, g.money))
-	g.io.ShowMessage(rewardMsg.String())
+	// Emit blind defeated event with all reward information
+	g.eventEmitter.EmitEvent(BlindDefeatedEvent{
+		BlindType:      g.currentBlind,
+		Score:          g.totalScore,
+		Target:         g.currentTarget,
+		BaseReward:     baseReward,
+		BonusReward:    bonusReward,
+		JokerReward:    jokerReward,
+		TotalReward:    totalReward,
+		NewMoney:       g.money,
+		UnusedHands:    unusedHands,
+		UnusedDiscards: unusedDiscards,
+	})
 
 	// Advance to next blind
 	if g.currentBlind == SmallBlind {
@@ -442,11 +449,14 @@ func (g *Game) handleBlindCompletion() {
 		g.currentBlind = BossBlind
 	} else {
 		// Completed Boss Blind, advance to next ante
+		oldAnte := g.currentAnte
 		g.currentAnte++
 		g.currentBlind = SmallBlind
 		if g.currentAnte <= MaxAntes {
-			progressionMsg := fmt.Sprintf("🌟 ANTE PROGRESSION 🌟\n   Ante %d → Ante %d\n🔄 NEW CHALLENGE AWAITS!", g.currentAnte-1, g.currentAnte)
-			g.io.ShowMessage(progressionMsg)
+			g.eventEmitter.EmitEvent(AnteCompletedEvent{
+				CompletedAnte: oldAnte,
+				NewAnte:       g.currentAnte,
+			})
 		}
 	}
 
@@ -466,19 +476,12 @@ func (g *Game) handleBlindCompletion() {
 		g.deckIndex += InitialCards
 
 		// Show next blind info
-		blindEmoji := ""
-		switch g.currentBlind {
-		case SmallBlind:
-			blindEmoji = "🔸"
-		case BigBlind:
-			blindEmoji = "🔶"
-		case BossBlind:
-			blindEmoji = "💀"
-		}
-
-		nextBlindMsg := fmt.Sprintf("%s NOW ENTERING: %s (Ante %d) %s\n🎯 NEW TARGET: %d points\n🃏 Fresh hand dealt!\n%s",
-			blindEmoji, g.currentBlind, g.currentAnte, blindEmoji, g.currentTarget, strings.Repeat("-", 40))
-		g.io.ShowMessage(nextBlindMsg)
+		g.eventEmitter.EmitEvent(NewBlindStartedEvent{
+			Ante:     g.currentAnte,
+			Blind:    g.currentBlind,
+			Target:   g.currentTarget,
+			NewCards: g.playerCards,
+		})
 
 		// Show shop between blinds
 		g.showShop()
@@ -498,8 +501,7 @@ func (g *Game) showShop() {
 
 	// If no jokers available, skip shop
 	if len(availableJokers) == 0 {
-		g.io.ShowMessage(fmt.Sprintf("🏪 SHOP 🏪\n💰 Your Money: $%d\n\nAll available jokers already owned!\nPress enter to continue...", g.money))
-		g.io.GetShopAction() // Wait for user to continue
+		g.eventEmitter.EmitMessage("All available jokers already owned!", "info")
 		return
 	}
 
@@ -521,35 +523,34 @@ func (g *Game) showShop() {
 		shopItems = availableJokers
 	}
 
-	// Convert jokers to shop items
-	var items []ShopItem
+	// Convert jokers to shop item data
+	var items []ShopItemData
 	for _, joker := range shopItems {
 		if joker.Name != "" {
-			items = append(items, ShopItem{
-				Name:        joker.Name,
-				Description: joker.Description,
-				Cost:        joker.Price,
-				Type:        "joker",
-			})
+			items = append(items, NewShopItemData(joker, g.money))
 		}
 	}
 
-	// Show shop and handle interactions through GameIO
-	g.io.ShowShop(items, g.money, g.rerollCost)
+	// Emit shop opened event
+	g.eventEmitter.EmitEvent(ShopOpenedEvent{
+		Money:      g.money,
+		RerollCost: g.rerollCost,
+		Items:      items,
+	})
 
 	for {
-		action, quit := g.io.GetShopAction()
+		action, quit := g.eventEmitter.handler.GetShopAction()
 		if quit {
 			return
 		}
 
 		if action == "exit" {
-			g.io.ShowMessage("Left the shop.")
+			g.eventEmitter.EmitEvent(ShopClosedEvent{})
 			return
 		} else if action == "reroll" {
 			if g.money >= g.rerollCost {
+				oldCost := g.rerollCost
 				g.money -= g.rerollCost
-				g.io.ShowMessage(fmt.Sprintf("💫 Rerolled for $%d! Next reroll: $%d", g.rerollCost, g.rerollCost+1))
 				g.rerollCost++
 
 				// Generate new shop items
@@ -565,25 +566,50 @@ func (g *Game) showShop() {
 					shopItems = availableJokers
 				}
 
+				// Convert new items and emit reroll event
+				var newItems []ShopItemData
+				for _, joker := range shopItems {
+					if joker.Name != "" {
+						newItems = append(newItems, NewShopItemData(joker, g.money))
+					}
+				}
+
+				g.eventEmitter.EmitEvent(ShopRerolledEvent{
+					Cost:           oldCost,
+					NewRerollCost:  g.rerollCost,
+					RemainingMoney: g.money,
+					NewItems:       newItems,
+				})
+
 				// Recursively call shop with new items
 				g.showShopWithItems(availableJokers, shopItems)
 				return
 			} else {
-				g.io.ShowMessage(fmt.Sprintf("Not enough money to reroll! Need $%d more.", g.rerollCost-g.money))
+				g.eventEmitter.EmitEvent(InvalidActionEvent{
+					Action: "reroll",
+					Reason: fmt.Sprintf("Not enough money to reroll! Need $%d more.", g.rerollCost-g.money),
+				})
 			}
 		} else if strings.HasPrefix(action, "buy ") {
 			choiceStr := strings.TrimPrefix(action, "buy ")
 			if choice, err := strconv.Atoi(choiceStr); err == nil && choice >= 1 && choice <= len(shopItems) {
 				selectedJoker := shopItems[choice-1]
 				if selectedJoker.Name == "" {
-					g.io.ShowMessage("That slot is empty!")
+					g.eventEmitter.EmitEvent(InvalidActionEvent{
+						Action: "buy",
+						Reason: "That slot is empty!",
+					})
 					continue
 				}
 
 				if g.money >= selectedJoker.Price {
 					g.money -= selectedJoker.Price
 					g.jokers = append(g.jokers, selectedJoker)
-					g.io.ShowMessage(fmt.Sprintf("✨ Purchased %s! ✨\n💰 Remaining money: $%d", selectedJoker.Name, g.money))
+
+					g.eventEmitter.EmitEvent(ShopItemPurchasedEvent{
+						Item:           NewShopItemData(selectedJoker, g.money+selectedJoker.Price),
+						RemainingMoney: g.money,
+					})
 
 					// Remove purchased item and update available jokers
 					shopItems[choice-1] = Joker{}
@@ -597,44 +623,52 @@ func (g *Game) showShop() {
 					g.showShopWithItems(availableJokers, shopItems)
 					return
 				} else {
-					g.io.ShowMessage(fmt.Sprintf("Not enough money! Need $%d more.", selectedJoker.Price-g.money))
+					g.eventEmitter.EmitEvent(InvalidActionEvent{
+						Action: "buy",
+						Reason: fmt.Sprintf("Not enough money! Need $%d more.", selectedJoker.Price-g.money),
+					})
 				}
 			} else {
-				g.io.ShowMessage("Invalid item number.")
+				g.eventEmitter.EmitEvent(InvalidActionEvent{
+					Action: "buy",
+					Reason: "Invalid item number.",
+				})
 			}
 		} else {
-			g.io.ShowMessage("Invalid action. Use 'buy <number>', 'reroll', or 'exit'.")
+			g.eventEmitter.EmitEvent(InvalidActionEvent{
+				Action: "unknown",
+				Reason: "Invalid action. Use 'buy <number>', 'reroll', or 'exit'.",
+			})
 		}
 	}
 }
 
 // showShopWithItems is a helper function to continue shop with specific items
 func (g *Game) showShopWithItems(availableJokers []Joker, shopItems []Joker) {
-	// Convert jokers to shop items for display
-	var items []ShopItem
+	// Convert jokers to shop item data for display
+	var items []ShopItemData
 	for _, joker := range shopItems {
 		if joker.Name != "" {
-			items = append(items, ShopItem{
-				Name:        joker.Name,
-				Description: joker.Description,
-				Cost:        joker.Price,
-				Type:        "joker",
-			})
+			items = append(items, NewShopItemData(joker, g.money))
 		}
 	}
 
 	// Check if shop is empty
 	if len(items) == 0 {
-		g.io.ShowMessage("Shop sold out!")
-		g.io.GetShopAction() // Wait for user to continue
+		g.eventEmitter.EmitMessage("Shop sold out!", "info")
+		g.eventEmitter.handler.GetShopAction() // Wait for user to continue
 		return
 	}
 
-	// Show shop through GameIO interface
-	g.io.ShowShop(items, g.money, g.rerollCost)
+	// Emit shop opened event with current items
+	g.eventEmitter.EmitEvent(ShopOpenedEvent{
+		Money:      g.money,
+		RerollCost: g.rerollCost,
+		Items:      items,
+	})
 
 	for {
-		action, quit := g.io.GetShopAction()
+		action, quit := g.eventEmitter.handler.GetShopAction()
 		if quit {
 			return
 		}
@@ -643,8 +677,8 @@ func (g *Game) showShopWithItems(availableJokers []Joker, shopItems []Joker) {
 			return
 		} else if action == "reroll" {
 			if g.money >= g.rerollCost {
+				oldCost := g.rerollCost
 				g.money -= g.rerollCost
-				g.io.ShowMessage(fmt.Sprintf("💫 Rerolled for $%d! Next reroll: $%d", g.rerollCost, g.rerollCost+1))
 				g.rerollCost++
 
 				// Generate new shop items
@@ -660,24 +694,49 @@ func (g *Game) showShopWithItems(availableJokers []Joker, shopItems []Joker) {
 					shopItems = availableJokers
 				}
 
+				// Convert new items and emit reroll event
+				var newItems []ShopItemData
+				for _, joker := range shopItems {
+					if joker.Name != "" {
+						newItems = append(newItems, NewShopItemData(joker, g.money))
+					}
+				}
+
+				g.eventEmitter.EmitEvent(ShopRerolledEvent{
+					Cost:           oldCost,
+					NewRerollCost:  g.rerollCost,
+					RemainingMoney: g.money,
+					NewItems:       newItems,
+				})
+
 				g.showShopWithItems(availableJokers, shopItems)
 				return
 			} else {
-				g.io.ShowMessage(fmt.Sprintf("Not enough money to reroll! Need $%d more.", g.rerollCost-g.money))
+				g.eventEmitter.EmitEvent(InvalidActionEvent{
+					Action: "reroll",
+					Reason: fmt.Sprintf("Not enough money to reroll! Need $%d more.", g.rerollCost-g.money),
+				})
 			}
 		} else if strings.HasPrefix(action, "buy ") {
 			choiceStr := strings.TrimPrefix(action, "buy ")
 			if choice, err := strconv.Atoi(choiceStr); err == nil && choice >= 1 && choice <= len(shopItems) {
 				selectedJoker := shopItems[choice-1]
 				if selectedJoker.Name == "" {
-					g.io.ShowMessage("That slot is empty!")
+					g.eventEmitter.EmitEvent(InvalidActionEvent{
+						Action: "buy",
+						Reason: "That slot is empty!",
+					})
 					continue
 				}
 
 				if g.money >= selectedJoker.Price {
 					g.money -= selectedJoker.Price
 					g.jokers = append(g.jokers, selectedJoker)
-					g.io.ShowMessage(fmt.Sprintf("✨ Purchased %s! ✨\n💰 Remaining money: $%d", selectedJoker.Name, g.money))
+
+					g.eventEmitter.EmitEvent(ShopItemPurchasedEvent{
+						Item:           NewShopItemData(selectedJoker, g.money+selectedJoker.Price),
+						RemainingMoney: g.money,
+					})
 
 					// Remove purchased item
 					shopItems[choice-1] = Joker{}
@@ -691,13 +750,22 @@ func (g *Game) showShopWithItems(availableJokers []Joker, shopItems []Joker) {
 					g.showShopWithItems(availableJokers, shopItems)
 					return
 				} else {
-					g.io.ShowMessage(fmt.Sprintf("Not enough money! Need $%d more.", selectedJoker.Price-g.money))
+					g.eventEmitter.EmitEvent(InvalidActionEvent{
+						Action: "buy",
+						Reason: fmt.Sprintf("Not enough money! Need $%d more.", selectedJoker.Price-g.money),
+					})
 				}
 			} else {
-				g.io.ShowMessage("Invalid item number.")
+				g.eventEmitter.EmitEvent(InvalidActionEvent{
+					Action: "buy",
+					Reason: "Invalid item number.",
+				})
 			}
 		} else {
-			g.io.ShowMessage("Invalid action. Use 'buy <number>', 'reroll', or 'exit'.")
+			g.eventEmitter.EmitEvent(InvalidActionEvent{
+				Action: "unknown",
+				Reason: "Invalid action. Use 'buy <number>', 'reroll', or 'exit'.",
+			})
 		}
 	}
 }
@@ -724,10 +792,14 @@ func removeCards(cards []Card, indices []int) []Card {
 func (g *Game) handleResortAction() {
 	if g.sortMode == SortByRank {
 		g.sortMode = SortBySuit
-		g.io.ShowMessage("Cards now sorted by suit")
+		g.eventEmitter.EmitEvent(CardsResortedEvent{
+			NewSortMode: "suit",
+		})
 	} else {
 		g.sortMode = SortByRank
-		g.io.ShowMessage("Cards now sorted by rank")
+		g.eventEmitter.EmitEvent(CardsResortedEvent{
+			NewSortMode: "rank",
+		})
 	}
 	// Update the display mapping with new sort order
 	g.updateDisplayToOriginalMapping()
