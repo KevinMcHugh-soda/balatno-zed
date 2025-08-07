@@ -359,10 +359,11 @@ func (g *Game) parseCardSelection(params []string) ([]Card, []int, bool) {
 			})
 			return nil, nil, false
 		}
-		// Map display position to original position
-		originalIndex := g.displayToOriginal[displayIndex-1]
-		selectedCards = append(selectedCards, g.playerCards[originalIndex])
-		selectedIndices = append(selectedIndices, originalIndex)
+		// Since playerCards is already sorted by updateDisplayToOriginalMapping,
+		// display position directly corresponds to current array position
+		arrayIndex := displayIndex - 1 // Convert 1-based to 0-based
+		selectedCards = append(selectedCards, g.playerCards[arrayIndex])
+		selectedIndices = append(selectedIndices, arrayIndex)
 	}
 
 	return selectedCards, selectedIndices, true
@@ -380,6 +381,9 @@ func (g *Game) removeAndDealCards(selectedIndices []int) {
 			g.deckIndex++
 		}
 	}
+
+	// Update display mapping after dealing new cards to maintain sort order
+	g.updateDisplayToOriginalMapping()
 }
 
 // calculateBlindReward calculates money earned for completing a blind
