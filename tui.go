@@ -2,8 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -551,20 +549,11 @@ func (m *TUIModel) handleDiscard() {
 
 // RunTUI starts the TUI application
 func RunTUI() error {
-	game := NewGame(PrintModeTUI)
+	// Create a dummy GameIO for the TUI (we'll handle I/O through the TUI directly)
+	tuiIO := NewTUIIO()
 
-	logFile, err := os.OpenFile("mylogfile.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		log.Fatalf("failed to open log file: %v", err)
-	}
-	// defer logFile.Close()
-	game.logger = *log.New(logFile, "", log.LstdFlags)
-
-	// Initialize display-to-original mapping for TUI (1:1 since we don't sort)
-	game.displayToOriginal = make([]int, len(game.playerCards))
-	for i := range game.playerCards {
-		game.displayToOriginal[i] = i
-	}
+	// Create game with TUI interface
+	game := NewGame(tuiIO)
 
 	m := TUIModel{
 		currentTime:   time.Now(),
@@ -576,6 +565,6 @@ func RunTUI() error {
 	m.setStatusMessage("Welcome! Select cards with 1-7, play with Enter/P, discard with D")
 
 	p := tea.NewProgram(m, tea.WithAltScreen())
-	_, err = p.Run()
+	_, err := p.Run()
 	return err
 }

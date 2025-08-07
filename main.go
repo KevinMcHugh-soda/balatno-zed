@@ -3,6 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
+	"os"
 )
 
 func main() {
@@ -23,8 +25,14 @@ func main() {
 			fmt.Printf("Error running TUI: %v\n", err)
 		}
 	} else {
+		// Create logger for console mode
+		logger := log.New(os.Stdout, "", log.LstdFlags)
+
+		// Create GameIO for console mode
+		gameIO := NewLoggerIO(logger)
+
 		// Create and run the game
-		game := NewGame(PrintModeLogger)
+		game := NewGame(gameIO)
 		game.Run()
 	}
 }
