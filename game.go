@@ -159,6 +159,19 @@ func (g *Game) Println(a ...any) {
 	}
 }
 
+func (g *Game) Scan() bool {
+	if g.printMode == PrintModeLogger {
+		return g.scanner.Scan()
+	}
+	return true
+}
+
+// func (g *Game) GetInput() string {
+// 	if g.printMode == PrintModeLogger {
+// 		g.scanner.Scan()
+// 	}
+// }
+
 // Run starts the main game loop
 func (g *Game) Run() {
 	g.Println("🃏 Welcome to Balatro CLI! 🃏")
@@ -298,7 +311,7 @@ func (g *Game) getPlayerInput() (string, []string, bool) {
 		g.Printf("(p)lay <cards>, (d)iscard <cards>, (r)esort, or (q)uit: ")
 	}
 
-	if !g.scanner.Scan() {
+	if !g.Scan() {
 		if err := g.scanner.Err(); err != nil {
 			g.Println("Error reading input:", err)
 		}
@@ -630,7 +643,7 @@ func (g *Game) showShop() {
 		g.Println()
 		g.Println("All available jokers already owned!")
 		g.Println("Press enter to continue...")
-		g.scanner.Scan()
+		g.Scan()
 		return
 	}
 
@@ -683,14 +696,14 @@ func (g *Game) showShop() {
 	if availableSlots == 0 {
 		g.Println("Shop sold out!")
 		g.Println("Press enter to continue...")
-		g.scanner.Scan()
+		g.Scan()
 		return
 	}
 
 	// Show options and handle single input
 	g.Printf("Buy item (1-%d), (r)eroll ($%d), or (s)kip shop: ", len(shopItems), g.rerollCost)
 
-	if g.scanner.Scan() {
+	if g.Scan() && g.printMode == PrintModeLogger {
 		input := strings.TrimSpace(strings.ToLower(g.scanner.Text()))
 
 		if input == "s" || input == "skip" {
