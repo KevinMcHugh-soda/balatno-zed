@@ -815,14 +815,14 @@ func (g *Game) showShopWithItems(availableJokers []Joker, shopItems []Joker) {
 	if availableSlots == 0 {
 		g.Println("Shop sold out!")
 		g.Println("Press enter to continue...")
-		g.scanner.Scan()
+		g.Scan()
 		return
 	}
 
 	// Show options and handle single input
 	g.Printf("Buy item (1-%d), (r)eroll ($%d), or (s)kip shop: ", len(shopItems), g.rerollCost)
 
-	if g.scanner.Scan() {
+	if g.Scan() {
 		input := strings.TrimSpace(strings.ToLower(g.scanner.Text()))
 
 		if input == "s" || input == "skip" {

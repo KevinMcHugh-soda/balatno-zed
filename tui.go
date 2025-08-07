@@ -483,6 +483,7 @@ func (m *TUIModel) handlePlay() {
 			m.setStatusMessage(fmt.Sprintf("🎉 %s for +%d points! ANTE %d COMPLETE! Starting Ante %d", handType, scoreGained, prevAnte, m.game.currentAnte))
 		} else {
 			m.setStatusMessage(fmt.Sprintf("🎉 %s for +%d points! BLIND DEFEATED! Next: %s", handType, scoreGained, m.game.currentBlind))
+			m.game.handleBlindCompletion()
 		}
 	} else if m.game.handsPlayed >= MaxHands {
 		m.setStatusMessage(fmt.Sprintf("💀 %s for +%d points, but Game Over! Final: %d/%d", handType, scoreGained, m.game.totalScore, m.game.currentTarget))
