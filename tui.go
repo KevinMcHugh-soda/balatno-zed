@@ -12,13 +12,14 @@ import (
 
 // TUI model holds the application state
 type TUIModel struct {
-	currentTime   time.Time
-	width         int
-	height        int
-	game          *Game
-	showHelp      bool
-	selectedCards []int // indices of selected cards (0-based)
-	statusMessage string
+	currentTime       time.Time
+	width             int
+	height            int
+	game              *Game
+	showHelp          bool
+	selectedCards     []int // indices of selected cards (0-based)
+	statusMessage     string
+	statusMessageTime time.Time
 }
 
 // tickMsg is sent every second to update the time
@@ -98,7 +99,7 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if cardIndex <= len(m.game.playerCards) {
 					m.toggleCardSelection(cardIndex - 1) // Convert to 0-based
 				} else {
-					m.statusMessage = fmt.Sprintf("Invalid card number: %d (only have %d cards)", cardIndex, len(m.game.playerCards))
+					m.setStatusMessage(fmt.Sprintf("Invalid card number: %d (only have %d cards)", cardIndex, len(m.game.playerCards)))
 				}
 			}
 			return m, nil
@@ -107,7 +108,7 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if len(m.selectedCards) > 0 {
 					m.handlePlay()
 				} else {
-					m.statusMessage = "Select cards first using number keys 1-7"
+					m.setStatusMessage("Select cards first using number keys 1-7")
 				}
 			}
 			return m, nil
@@ -116,20 +117,27 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if len(m.selectedCards) > 0 {
 					m.handleDiscard()
 				} else {
-					m.statusMessage = "Select cards first using number keys 1-7"
+					m.setStatusMessage("Select cards first using number keys 1-7")
 				}
 			}
 			return m, nil
 		case "escape", "c":
 			if !m.showHelp {
 				m.selectedCards = []int{}
-				m.statusMessage = "Selection cleared"
+				m.setStatusMessage("Selection cleared")
 			}
 			return m, nil
 		}
 
 	case tickMsg:
 		m.currentTime = time.Time(msg)
+
+		// Clear status message after 3 seconds
+		if !m.statusMessageTime.IsZero() && time.Since(m.statusMessageTime) > 3*time.Second {
+			m.statusMessage = ""
+			m.statusMessageTime = time.Time{}
+		}
+
 		return m, tickCmd()
 	}
 
@@ -147,18 +155,20 @@ func (m TUIModel) View() string {
 		Width(m.width).
 		Render("🃏 Welcome to Balatno")
 
-	// Bottom bar with current time and instructions
+	// Status bar (second from bottom)
+	statusBar := bottomBarStyle.
+		Width(m.width).
+		Render(m.getStatusMessage())
+
+	// Bottom bar with time and controls
 	timeStr := m.currentTime.Format("15:04:05")
 	controls := "⏰ " + timeStr + " | 1-7: select cards, Enter/P: play, D: discard, C: clear, H: help, Q: quit"
-	if m.statusMessage != "" {
-		controls = "⏰ " + timeStr + " | " + m.statusMessage + " | H: help, Q: quit"
-	}
 	bottomBar := bottomBarStyle.
 		Width(m.width).
 		Render(controls)
 
-	// Main content area
-	contentHeight := m.height - 2 // Account for top and bottom bars
+	// Main content area - fixed height
+	contentHeight := m.height - 3 // Account for top, status, and bottom bars
 
 	var content string
 	if m.showHelp {
@@ -174,11 +184,12 @@ func (m TUIModel) View() string {
 		Height(contentHeight).
 		Render(content)
 
-	// Combine all parts
+	// Combine all parts with fixed layout
 	return lipgloss.JoinVertical(
 		lipgloss.Left,
 		topBar,
 		renderedContent,
+		statusBar,
 		bottomBar,
 	)
 }
@@ -196,7 +207,7 @@ func (m TUIModel) renderGameContent() string {
 		return "Game not initialized"
 	}
 
-	// Game status info
+	// Game status info - fixed height section
 	progress := float64(m.game.totalScore) / float64(m.game.currentTarget)
 	if progress > 1.0 {
 		progress = 1.0
@@ -230,37 +241,31 @@ func (m TUIModel) renderGameContent() string {
 		fmt.Sprintf("🎴 Hands Left: %d | 🗑️ Discards Left: %d | 💰 Money: $%d",
 			MaxHands-m.game.handsPlayed, MaxDiscards-m.game.discardsUsed, m.game.money)
 
-	gameInfoBox := gameInfoStyle.Render(gameInfo)
+	gameInfoBox := gameInfoStyle.
+		Height(5).
+		Render(gameInfo)
 
-	// Render hand
+	// Render hand - fixed height section
 	hand := m.renderHand()
-
-	// Instructions
-	instructions := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("244")).
-		Italic(true).
-		Margin(1, 1).
-		Render("🎮 Game controls will be added soon. Currently showing your starting hand of cards.")
 
 	return lipgloss.JoinVertical(
 		lipgloss.Left,
 		gameInfoBox,
 		hand,
-		instructions,
 	)
 }
 
 // renderHand renders the player's current hand of cards
 func (m TUIModel) renderHand() string {
 	if m.game == nil || len(m.game.playerCards) == 0 {
-		return handStyle.Render("No cards in hand")
+		return handStyle.Height(10).Render("No cards in hand")
 	}
 
 	var content strings.Builder
 
-	// Render selected cards first (if any)
+	// Selected cards area - always reserve space
+	content.WriteString("🎯 Selected Cards:\n")
 	if len(m.selectedCards) > 0 {
-		content.WriteString("🎯 Selected Cards:\n")
 		var selectedViews []string
 		for _, index := range m.selectedCards {
 			if index >= 0 && index < len(m.game.playerCards) {
@@ -271,11 +276,13 @@ func (m TUIModel) renderHand() string {
 		}
 		selectedDisplay := lipgloss.JoinHorizontal(lipgloss.Top, selectedViews...)
 		content.WriteString(selectedDisplay)
-		content.WriteString("\n\n")
+	} else {
+		content.WriteString("(none selected)")
 	}
+	content.WriteString("\n\n")
 
-	// Render all cards in hand
-	content.WriteString("🃏 Your Hand (7 cards):\n")
+	// Hand cards area - fixed position
+	content.WriteString(fmt.Sprintf("🃏 Your Hand (%d cards):\n", len(m.game.playerCards)))
 	var cardViews []string
 	for i, card := range m.game.playerCards {
 		isSelected := m.isCardSelected(i)
@@ -301,7 +308,7 @@ func (m TUIModel) renderHand() string {
 	cardsDisplay := lipgloss.JoinHorizontal(lipgloss.Top, cardViews...)
 	content.WriteString(cardsDisplay)
 
-	return handStyle.Render(content.String())
+	return handStyle.Height(10).Render(content.String())
 }
 
 // renderHelp renders the help screen
@@ -358,6 +365,20 @@ func (m TUIModel) renderHelp() string {
 	return helpStyle.Render(helpContent)
 }
 
+// getStatusMessage returns the current status message or default message
+func (m TUIModel) getStatusMessage() string {
+	if m.statusMessage != "" {
+		return m.statusMessage
+	}
+	return "Select cards with 1-7, play with Enter/P, discard with D"
+}
+
+// setStatusMessage sets a status message with timestamp for auto-clearing
+func (m *TUIModel) setStatusMessage(msg string) {
+	m.statusMessage = msg
+	m.statusMessageTime = time.Now()
+}
+
 // renderCard renders a single card with appropriate styling
 func (m TUIModel) renderCard(card Card, isInSelectedArea bool) string {
 	cardStr := fmt.Sprintf("%s%s", card.Rank.String(), card.Suit.String())
@@ -401,36 +422,60 @@ func (m *TUIModel) toggleCardSelection(index int) {
 	for i, selected := range m.selectedCards {
 		if selected == index {
 			// Remove from selection
+			card := m.game.playerCards[index]
 			m.selectedCards = append(m.selectedCards[:i], m.selectedCards[i+1:]...)
-			m.statusMessage = fmt.Sprintf("Card %d deselected", index+1)
+			remaining := len(m.selectedCards)
+			if remaining > 0 {
+				m.setStatusMessage(fmt.Sprintf("✗ Deselected %s | %d cards still selected", card.String(), remaining))
+			} else {
+				m.setStatusMessage(fmt.Sprintf("✗ Deselected %s | No cards selected", card.String()))
+			}
 			return
 		}
 	}
 
 	// Add to selection (max 5 cards for poker)
 	if len(m.selectedCards) >= 5 {
-		m.statusMessage = "Maximum 5 cards can be selected"
+		m.setStatusMessage("⚠️ Maximum 5 cards can be selected for a poker hand")
 		return
 	}
 
 	m.selectedCards = append(m.selectedCards, index)
-	m.statusMessage = fmt.Sprintf("Card %d selected (%d/5)", index+1, len(m.selectedCards))
+	card := m.game.playerCards[index]
+	m.setStatusMessage(fmt.Sprintf("✓ Selected %s (card %d) | %d/5 cards selected", card.String(), index+1, len(m.selectedCards)))
 }
 
 // handlePlay processes playing the selected cards
 func (m *TUIModel) handlePlay() {
 	if len(m.selectedCards) == 0 {
-		m.statusMessage = "No cards selected to play"
+		m.setStatusMessage("No cards selected to play")
 		return
 	}
 
 	if m.game.handsPlayed >= MaxHands {
-		m.statusMessage = "No hands remaining!"
+		m.setStatusMessage("No hands remaining!")
 		return
 	}
 
 	// Store previous state to check for changes
 	prevScore := m.game.totalScore
+	prevAnte := m.game.currentAnte
+
+	// Get selected cards for hand evaluation
+	var selectedCards []Card
+	for _, index := range m.selectedCards {
+		if index >= 0 && index < len(m.game.playerCards) {
+			selectedCards = append(selectedCards, m.game.playerCards[index])
+		}
+	}
+
+	// Evaluate hand to get hand type for status message
+	var handType string
+	if len(selectedCards) > 0 {
+		hand := Hand{Cards: selectedCards}
+		evaluator, _, _, _ := EvaluateHand(hand)
+		handType = evaluator.Name()
+	}
 
 	// Convert selected indices to string params for existing game logic
 	var params []string
@@ -452,29 +497,46 @@ func (m *TUIModel) handlePlay() {
 	scoreGained := m.game.totalScore - prevScore
 	m.selectedCards = []int{}
 
+	// Check for ante/blind progression
+	anteProgressed := m.game.currentAnte > prevAnte
+
 	if m.game.totalScore >= m.game.currentTarget {
-		m.statusMessage = fmt.Sprintf("🎉 BLIND DEFEATED! +%d points (%d total) - Advancing to next blind!", scoreGained, m.game.totalScore)
+		if anteProgressed {
+			m.setStatusMessage(fmt.Sprintf("🎉 %s for +%d points! ANTE %d COMPLETE! Starting Ante %d", handType, scoreGained, prevAnte, m.game.currentAnte))
+		} else {
+			m.setStatusMessage(fmt.Sprintf("🎉 %s for +%d points! BLIND DEFEATED! Next: %s", handType, scoreGained, m.game.currentBlind))
+		}
 	} else if m.game.handsPlayed >= MaxHands {
-		m.statusMessage = fmt.Sprintf("💀 Game Over! No hands left. Final score: %d/%d", m.game.totalScore, m.game.currentTarget)
+		m.setStatusMessage(fmt.Sprintf("💀 %s for +%d points, but Game Over! Final: %d/%d", handType, scoreGained, m.game.totalScore, m.game.currentTarget))
 	} else {
 		handsLeft := MaxHands - m.game.handsPlayed
-		m.statusMessage = fmt.Sprintf("✅ +%d points! Score: %d/%d | %d hands left", scoreGained, m.game.totalScore, m.game.currentTarget, handsLeft)
+		progressPercent := float64(m.game.totalScore) / float64(m.game.currentTarget) * 100
+		m.setStatusMessage(fmt.Sprintf("✅ %s for +%d points! %d/%d (%.0f%%) | %d hands left", handType, scoreGained, m.game.totalScore, m.game.currentTarget, progressPercent, handsLeft))
 	}
 }
 
 // handleDiscard processes discarding the selected cards
 func (m *TUIModel) handleDiscard() {
 	if len(m.selectedCards) == 0 {
-		m.statusMessage = "No cards selected to discard"
+		m.setStatusMessage("No cards selected to discard")
 		return
 	}
 
 	if m.game.discardsUsed >= MaxDiscards {
-		m.statusMessage = "No discards remaining!"
+		m.setStatusMessage("No discards remaining!")
 		return
 	}
 
 	numCards := len(m.selectedCards)
+
+	// Get card names for status message
+	var discardedCards []string
+	for _, index := range m.selectedCards {
+		if index >= 0 && index < len(m.game.playerCards) {
+			card := m.game.playerCards[index]
+			discardedCards = append(discardedCards, card.String())
+		}
+	}
 
 	// Convert selected indices to string params for existing game logic
 	var params []string
@@ -496,10 +558,15 @@ func (m *TUIModel) handleDiscard() {
 	discardsLeft := MaxDiscards - m.game.discardsUsed
 	m.selectedCards = []int{}
 
+	discardedStr := strings.Join(discardedCards, ", ")
+	if len(discardedStr) > 20 {
+		discardedStr = fmt.Sprintf("%d cards", numCards)
+	}
+
 	if discardsLeft > 0 {
-		m.statusMessage = fmt.Sprintf("🗑️ Discarded %d cards, dealt new ones | %d discards left", numCards, discardsLeft)
+		m.setStatusMessage(fmt.Sprintf("🗑️ Discarded %s, dealt new cards | %d discards remaining", discardedStr, discardsLeft))
 	} else {
-		m.statusMessage = fmt.Sprintf("🗑️ Discarded %d cards, dealt new ones | No discards remaining!", numCards)
+		m.setStatusMessage(fmt.Sprintf("🗑️ Discarded %s, dealt new cards | No more discards available!", discardedStr))
 	}
 }
 
@@ -517,8 +584,10 @@ func RunTUI() error {
 		currentTime:   time.Now(),
 		game:          game,
 		selectedCards: []int{},
-		statusMessage: "Select cards with 1-7, play with Enter/P, discard with D",
 	}
+
+	// Set initial status message
+	m.setStatusMessage("Welcome! Select cards with 1-7, play with Enter/P, discard with D")
 
 	p := tea.NewProgram(m, tea.WithAltScreen())
 	_, err := p.Run()
