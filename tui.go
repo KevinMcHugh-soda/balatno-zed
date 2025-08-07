@@ -122,6 +122,10 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 			return m, nil
+		case "r":
+			if !m.showHelp && m.eventHandler != nil {
+				m.eventHandler.HandleResortAction()
+			}
 		case "escape", "c":
 			if !m.showHelp {
 				m.selectedCards = []int{}
@@ -157,7 +161,7 @@ func (m TUIModel) View() string {
 
 	// Bottom bar with time and controls
 	timeStr := m.currentTime.Format("15:04:05")
-	controls := "⏰ " + timeStr + " | 1-7: select cards, Enter/P: play, D: discard, C: clear, H: help, Q: quit"
+	controls := "⏰ " + timeStr + " | 1-7: select cards, Enter/P: play, D: discard, C: clear, R: resort,H: help, Q: quit"
 	bottomBar := bottomBarStyle.
 		Width(m.width).
 		Render(controls)
