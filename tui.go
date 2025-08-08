@@ -107,6 +107,10 @@ func (m TUIModel) Init() tea.Cmd {
 	)
 }
 
+func (m TUIModel) IsShopping() bool {
+	return m.shopInfo != nil
+}
+
 // Update handles messages and updates the model
 func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// if msg.(type) != tea.KeyMsg && msg.(type) != tickMsg{
@@ -446,8 +450,7 @@ func (m TUIModel) renderShop() string {
 
 		positionNum := posNumStyle.Render(fmt.Sprintf("%d", idx+1))
 
-		// Combine card and position number vertically
-		jokerWithPos := lipgloss.JoinHorizontal(lipgloss.Center, positionNum, jokerStr)
+		jokerWithPos := lipgloss.JoinHorizontal(lipgloss.Left, positionNum, jokerStr)
 		jokerViews = append(jokerViews, jokerWithPos)
 	}
 
@@ -462,7 +465,7 @@ func (m TUIModel) renderShop() string {
 
 // renderGameContent renders the main game area
 func (m TUIModel) renderGameContent() string {
-	if m.shopInfo != nil {
+	if m.IsShopping() {
 		return m.renderShop()
 	}
 	// Game status info - fixed height section
