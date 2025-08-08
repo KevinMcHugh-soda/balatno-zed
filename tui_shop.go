@@ -47,14 +47,17 @@ func (ms ShoppingMode) renderContent(m TUIModel) string {
 func (gm ShoppingMode) handleKeyPress(m *TUIModel, msg string) (tea.Model, tea.Cmd) {
 	switch msg {
 	case "1", "2", "3", "4", "5", "6", "7":
-		if !m.showHelp {
-			return m, nil
-		}
-	case "h":
+		// select a shop item
 		return m, nil
-	case "q":
-		return m, tea.Quit
-	default:
+
+	case "enter":
+		// purchase what's selected
+		// or move on
+		// if len(m.selectedCards) > 0 {
+		// 	m.handlePlay()
+		// } else {
+		// 	m.setStatusMessage("Select cards first using number keys 1-7")
+		// }
 		return m, nil
 	}
 	return m, nil

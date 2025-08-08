@@ -124,49 +124,41 @@ func renderHand(m TUIModel) string {
 }
 
 func (gm GameMode) handleKeyPress(m *TUIModel, msg string) (tea.Model, tea.Cmd) {
+	// TODO: get rid of the showhelp as much as possible
 	switch msg {
 	case "1", "2", "3", "4", "5", "6", "7":
-		if !m.showHelp {
-			cardIndex, _ := strconv.Atoi(msg)
-			if cardIndex <= len(m.cards) {
-				m.toggleCardSelection(cardIndex - 1) // Convert to 0-based
-			} else {
-				m.setStatusMessage(fmt.Sprintf("Invalid card number: %d (only have %d cards)", cardIndex, len(m.cards)))
-			}
+		cardIndex, _ := strconv.Atoi(msg)
+		if cardIndex <= len(m.cards) {
+			// I'd like to move card selection into the mode
+			m.toggleCardSelection(cardIndex - 1) // Convert to 0-based
+		} else {
+			m.setStatusMessage(fmt.Sprintf("Invalid card number: %d (only have %d cards)", cardIndex, len(m.cards)))
 		}
 		return m, nil
 
 	case "enter", "p":
-		if !m.showHelp {
-			if len(m.selectedCards) > 0 {
-				m.handlePlay()
-			} else {
-				m.setStatusMessage("Select cards first using number keys 1-7")
-			}
+		if len(m.selectedCards) > 0 {
+			m.handlePlay()
+		} else {
+			m.setStatusMessage("Select cards first using number keys 1-7")
 		}
 		return m, nil
 
 	case "d":
-		if !m.showHelp {
-			if len(m.selectedCards) > 0 {
-				m.handleDiscard()
-			} else {
-				m.setStatusMessage("Select cards first using number keys 1-7")
-			}
+		if len(m.selectedCards) > 0 {
+			m.handleDiscard()
+		} else {
+			m.setStatusMessage("Select cards first using number keys 1-7")
 		}
 		return m, nil
 
 	case "r":
-		if !m.showHelp {
-			m.handleResort()
-		}
+		m.handleResort()
 		return m, nil
 
 	case "escape", "c":
-		if !m.showHelp {
-			m.selectedCards = []int{}
-			m.setStatusMessage("Selection cleared")
-		}
+		m.selectedCards = []int{}
+		m.setStatusMessage("Selection cleared")
 		return m, nil
 	}
 
