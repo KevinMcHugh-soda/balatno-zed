@@ -124,8 +124,8 @@ func renderHand(m TUIModel) string {
 }
 
 func (gm GameMode) handleKeyPress(m *TUIModel, msg string) (tea.Model, tea.Cmd) {
-	// TODO: get rid of the showhelp as much as possible
 	switch msg {
+	// there's a bug when you discard and then attempt to play, it won't submit.
 	case "1", "2", "3", "4", "5", "6", "7":
 		cardIndex, _ := strconv.Atoi(msg)
 		if cardIndex <= len(m.cards) {

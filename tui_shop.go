@@ -64,8 +64,6 @@ func (gm ShoppingMode) handleKeyPress(m *TUIModel, msg string) (tea.Model, tea.C
 }
 
 func renderJoker(m TUIModel, joker ShopItemData) string {
-	// TODO - style the cost in red if we can't afford it
-
 	cost := fmt.Sprintf("%d", joker.Cost)
 	if joker.Cost > m.gameState.Money {
 		cost = lipgloss.NewStyle().Foreground(lipgloss.Color("203")).Render(cost)

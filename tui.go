@@ -349,9 +349,9 @@ func (m TUIModel) View() string {
 	contentHeight := m.height - 3 // Account for top, status, and bottom bars
 
 	var content string
-	if m.showHelp {
-		m.mode = m.mode.toggleHelp()
-	}
+	// if m.showHelp {
+	// 	m.mode = m.mode.toggleHelp()
+	// }
 
 	content = m.mode.renderContent(m)
 
