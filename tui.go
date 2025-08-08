@@ -48,6 +48,7 @@ type TUIModel struct {
 	displayMap []int
 	sortMode   string
 	shopInfo   *ShopOpenedEvent
+	mode       Mode
 
 	// Communication with game
 	actionRequestPending *PlayerActionRequest
@@ -134,6 +135,7 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Game event messages
 	case gameStartedMsg:
 		m.setStatusMessage("🎮 Game started! Select cards with 1-7, play with Enter/P, discard with D")
+		m.mode = GameMode{}
 		return m, nil
 
 	case gameStateChangedMsg:
@@ -232,6 +234,7 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		event := ShopOpenedEvent(msg)
 		shopCopy := event
 		m.shopInfo = &shopCopy
+		m.mode = ShoppingMode{}
 		m.setStatusMessage("🛍️ Welcome to the Shop!")
 		return m, nil
 
@@ -248,6 +251,7 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case shopClosedMsg:
 		m.shopInfo = nil
 		m.setStatusMessage("👋 Left the shop")
+		m.mode = GameMode{}
 		return m, nil
 
 	case invalidActionMsg:
@@ -389,10 +393,10 @@ func (m TUIModel) View() string {
 
 	var content string
 	if m.showHelp {
-		content = m.renderHelp()
-	} else {
-		content = m.renderGameContent()
+		m.mode = m.mode.toggleHelp()
 	}
+
+	content = m.mode.renderContent(m)
 
 	renderedContent := mainContentStyle.
 		Width(m.width).
@@ -416,196 +420,9 @@ func tickCmd() tea.Cmd {
 	})
 }
 
-func (m TUIModel) renderJoker(joker ShopItemData) string {
-	// TODO - style the cost in red if we can't afford it
-
-	cost := fmt.Sprintf("%d", joker.Cost)
-	if joker.Cost > m.gameState.Money {
-		cost = lipgloss.NewStyle().Foreground(lipgloss.Color("203")).Render(cost)
-	}
-	jokerStr := fmt.Sprintf("%s ($%s): %s\n", joker.Name, cost, joker.Description)
-
-	return jokerStr
-}
-
-func (m TUIModel) renderShop() string {
-	gameInfo := fmt.Sprintf("%s Ante %d - %s✅\n", "🏪", m.gameState.Ante, m.gameState.Blind) +
-		fmt.Sprintf("🎴 Hands: %d | 🗑️ Discards: %d | 💰 Money: $%d",
-			m.gameState.Hands, m.gameState.Discards, m.gameState.Money)
-	gameInfoBox := gameInfoStyle.
-		Height(5).
-		Render(gameInfo)
-
-	var jokerViews []string
-
-	for idx, joker := range m.shopInfo.Items {
-		jokerStr := m.renderJoker(joker)
-
-		posNumStyle := lipgloss.NewStyle().
-			Foreground(lipgloss.Color("244"))
-
-		if m.isCardSelected(idx) {
-			posNumStyle = posNumStyle.Foreground(lipgloss.Color("226")).Bold(true)
-		}
-
-		positionNum := posNumStyle.Render(fmt.Sprintf("%d", idx+1))
-
-		jokerWithPos := lipgloss.JoinHorizontal(lipgloss.Left, positionNum, jokerStr)
-		jokerViews = append(jokerViews, jokerWithPos)
-	}
-
-	jokerDisplay := gameInfoStyle.Height(len(jokerViews)).Render(lipgloss.JoinVertical(lipgloss.Top, jokerViews...))
-
-	return lipgloss.JoinVertical(
-		lipgloss.Left,
-		gameInfoBox,
-		jokerDisplay,
-	)
-}
-
-// renderGameContent renders the main game area
-func (m TUIModel) renderGameContent() string {
-	if m.IsShopping() {
-		return m.renderShop()
-	}
-	// Game status info - fixed height section
-	progress := float64(m.gameState.Score) / float64(m.gameState.Target)
-	if progress > 1.0 {
-		progress = 1.0
-	}
-	progressWidth := 20
-	filled := int(progress * float64(progressWidth))
-
-	progressBar := ""
-	for i := 0; i < progressWidth; i++ {
-		if i < filled {
-			progressBar += "█"
-		} else {
-			progressBar += "░"
-		}
-	}
-
-	// Blind type emojis
-	blindEmoji := ""
-	switch m.gameState.Blind {
-	case SmallBlind:
-		blindEmoji = "🔸"
-	case BigBlind:
-		blindEmoji = "🔶"
-	case BossBlind:
-		blindEmoji = "💀"
-	}
-
-	gameInfo := fmt.Sprintf("%s Ante %d - %s\n", blindEmoji, m.gameState.Ante, m.gameState.Blind) +
-		fmt.Sprintf("🎯 Target: %d | Current Score: %d [%s] (%.1f%%)\n",
-			m.gameState.Target, m.gameState.Score, progressBar, progress*100) +
-		fmt.Sprintf("🎴 Hands Left: %d | 🗑️ Discards Left: %d | 💰 Money: $%d",
-			m.gameState.Hands, m.gameState.Discards, m.gameState.Money)
-
-	gameInfoBox := gameInfoStyle.
-		Height(5).
-		Render(gameInfo)
-
-	// Render hand - fixed height section
-	hand := m.renderHand()
-
-	return lipgloss.JoinVertical(
-		lipgloss.Left,
-		gameInfoBox,
-		hand,
-	)
-}
-
-// renderHand renders the player's current hand of cards
-func (m TUIModel) renderHand() string {
-	if len(m.cards) == 0 {
-		return handStyle.Height(10).Render("No cards in hand")
-	}
-
-	var content strings.Builder
-
-	// Hand cards area - fixed position
-	content.WriteString(fmt.Sprintf("🃏 Your Hand (%d cards):\n", len(m.cards)))
-	var cardViews []string
-	for i, card := range m.cards {
-		isSelected := m.isCardSelected(i)
-		cardStr := m.renderCard(card, false)
-
-		// Add position number below the card
-		posNumStyle := lipgloss.NewStyle().
-			Foreground(lipgloss.Color("244")).
-			Margin(0, 1)
-
-		if isSelected {
-			posNumStyle = posNumStyle.Foreground(lipgloss.Color("226")).Bold(true)
-		}
-
-		positionNum := posNumStyle.Render(fmt.Sprintf("%d", i+1))
-
-		// Combine card and position number vertically
-		cardWithPos := lipgloss.JoinVertical(lipgloss.Center, cardStr, positionNum)
-		cardViews = append(cardViews, cardWithPos)
-	}
-
-	// Display all cards in a single row
-	cardsDisplay := lipgloss.JoinHorizontal(lipgloss.Top, cardViews...)
-	content.WriteString(cardsDisplay)
-
-	return handStyle.Height(10).Render(content.String())
-}
-
-// renderHelp renders the help screen
-func (m TUIModel) renderHelp() string {
-	helpStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("33")).
-		Padding(1).
-		Margin(1)
-
-	helpContent := `🎮 BALATNO HELP
-
-		🎯 OBJECTIVE:
-		   Reach the target score by playing poker hands before running out of hands/discards
-
-		🃏 GAME ELEMENTS:
-		   • Ante: Current level (1-8)
-		   • Blinds: Small 🔸, Big 🔶, Boss 💀
-		   • Score: Current total vs target score
-		   • Hands: Number of plays remaining
-		   • Discards: Number of discards remaining
-		   • Money: Used for shop purchases
-		   • Cards: Displayed as compact 2-char format (e.g., A♠, K♥)
-		     - Hearts ♥: Red, Diamonds ♦: Orange
-		     - Clubs ♣: Dark Blue, Spades ♠: Gray
-
-		🎴 POKER HANDS (from weakest to strongest):
-		   • High Card      • Pair           • Two Pair
-		   • Three of Kind  • Straight       • Flush
-		   • Full House     • Four of Kind   • Straight Flush
-
-		💰 SCORING:
-		   • Base chips + multiplier for hand type
-		   • Jokers can modify scoring significantly
-		   • Unused hands/discards give bonus money
-
-		⌨️  GAMEPLAY CONTROLS:
-		   • 1-7: Select/deselect cards by position
-		   • Enter/P: Play selected cards
-		   • D: Discard selected cards
-		   • C/Escape: Clear selection
-		   • H: Toggle this help screen
-		   • Q: Quit game
-
-		📝 HOW TO PLAY:
-		   1. Select cards using number keys (1-7)
-		   2. Selected cards appear above your hand
-		   3. Press Enter/P to play selected cards as a poker hand
-		   4. Press D to discard selected cards for new ones
-		   5. Use C to clear your selection
-
-		🎯 GOAL: Beat the target score before running out of hands!`
-
-	return helpStyle.Render(helpContent)
+type Mode interface {
+	renderContent(m TUIModel) string
+	toggleHelp() Mode
 }
 
 // getStatusMessage returns the current status message or default message
@@ -620,29 +437,6 @@ func (m TUIModel) getStatusMessage() string {
 func (m *TUIModel) setStatusMessage(msg string) {
 	m.statusMessage = msg
 	m.statusMessageTime = time.Now()
-}
-
-// renderCard renders a single card with appropriate styling
-func (m TUIModel) renderCard(card Card, isInSelectedArea bool) string {
-	cardStr := fmt.Sprintf("%s%s", card.Rank.String(), card.Suit.String())
-
-	var style lipgloss.Style
-	switch card.Suit {
-	case Hearts:
-		style = heartsCardStyle
-	case Diamonds:
-		style = diamondsCardStyle
-	case Clubs:
-		style = clubsCardStyle
-	case Spades:
-		style = spadesCardStyle
-	}
-
-	if isInSelectedArea {
-		style = style.Bold(true).Background(lipgloss.Color("235"))
-	}
-
-	return style.Render(cardStr)
 }
 
 // isCardSelected checks if a card at the given index is selected
