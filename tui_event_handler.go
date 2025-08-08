@@ -147,27 +147,6 @@ func (h *TUIEventHandler) Close() {
 	close(h.shopChan)
 }
 
-// SendPlayerAction processes player actions from the TUI
-// func (h *TUIEventHandler) SendPlayerAction(action PlayerAction, params []string, quit bool) {
-// 	// Check if there's a pending request
-// 	select {
-// 	case request := <-h.actionChan:
-// 		// Send response
-// 		response := PlayerActionResponse{
-// 			Action: action,
-// 			Params: params,
-// 			Quit:   quit,
-// 		}
-// 		select {
-// 		case request.ResponseChan <- response:
-// 		case <-time.After(100 * time.Millisecond):
-// 			// Response channel full, ignore
-// 		}
-// 	default:
-// 		// No pending request, ignore
-// 	}
-// }
-
 // Helper method to check if there's a pending action request
 func (h *TUIEventHandler) HasPendingActionRequest() bool {
 	select {

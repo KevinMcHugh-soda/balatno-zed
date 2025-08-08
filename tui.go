@@ -48,7 +48,6 @@ type TUIModel struct {
 	displayMap []int
 	sortMode   string
 	shopInfo   *ShopOpenedEvent
-	lastEvent  any
 
 	// Communication with game
 	actionRequestPending *PlayerActionRequest
@@ -127,7 +126,6 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tickCmd()
 	}
 
-	m.lastEvent = msg
 	switch msg := msg.(type) {
 	// Game event messages
 	case gameStartedMsg:
@@ -368,7 +366,7 @@ func (m TUIModel) View() string {
 	// Top bar
 	topBar := topBarStyle.
 		Width(m.width).
-		Render(fmt.Sprintf("🃏 Welcome to Balatno %s", m.lastEvent))
+		Render(fmt.Sprintf("🃏 Welcome to Balatno"))
 
 	// Status bar (second from bottom)
 	statusBar := bottomBarStyle.
@@ -414,8 +412,59 @@ func tickCmd() tea.Cmd {
 	})
 }
 
+func (m TUIModel) renderJoker(joker ShopItemData) string {
+	// TODO - style the cost in red if we can't afford it
+
+	cost := fmt.Sprintf("%d", joker.Cost)
+	if joker.Cost > m.gameState.Money {
+		cost = lipgloss.NewStyle().Foreground(lipgloss.Color("203")).Render(cost)
+	}
+	jokerStr := fmt.Sprintf("%s ($%s): %s\n", joker.Name, cost, joker.Description)
+
+	return jokerStr
+}
+
+func (m TUIModel) renderShop() string {
+	gameInfo := fmt.Sprintf("%s Ante %d - %s✅\n", "🏪", m.gameState.Ante, m.gameState.Blind) +
+		fmt.Sprintf("🎴 Hands: %d | 🗑️ Discards: %d | 💰 Money: $%d",
+			m.gameState.Hands, m.gameState.Discards, m.gameState.Money)
+	gameInfoBox := gameInfoStyle.
+		Height(5).
+		Render(gameInfo)
+
+	var jokerViews []string
+
+	for idx, joker := range m.shopInfo.Items {
+		jokerStr := m.renderJoker(joker)
+
+		posNumStyle := lipgloss.NewStyle().
+			Foreground(lipgloss.Color("244"))
+
+		if m.isCardSelected(idx) {
+			posNumStyle = posNumStyle.Foreground(lipgloss.Color("226")).Bold(true)
+		}
+
+		positionNum := posNumStyle.Render(fmt.Sprintf("%d", idx+1))
+
+		// Combine card and position number vertically
+		jokerWithPos := lipgloss.JoinHorizontal(lipgloss.Center, positionNum, jokerStr)
+		jokerViews = append(jokerViews, jokerWithPos)
+	}
+
+	jokerDisplay := gameInfoStyle.Height(len(jokerViews)).Render(lipgloss.JoinVertical(lipgloss.Top, jokerViews...))
+
+	return lipgloss.JoinVertical(
+		lipgloss.Left,
+		gameInfoBox,
+		jokerDisplay,
+	)
+}
+
 // renderGameContent renders the main game area
 func (m TUIModel) renderGameContent() string {
+	if m.shopInfo != nil {
+		return m.renderShop()
+	}
 	// Game status info - fixed height section
 	progress := float64(m.gameState.Score) / float64(m.gameState.Target)
 	if progress > 1.0 {
@@ -444,30 +493,7 @@ func (m TUIModel) renderGameContent() string {
 		blindEmoji = "💀"
 	}
 
-	gameInfo := ""
-
-	if m.shopInfo != nil {
-		gameInfo = fmt.Sprintf("Shop opened\n")
-
-		gameInfoBox := gameInfoStyle.
-			Height(5).
-			Render(gameInfo)
-
-		jokers := ""
-
-		for idx, joker := range m.shopInfo.Items {
-			jokers += fmt.Sprintf("%d|%s (%d): %s\n", idx+1, joker.Name, joker.Cost, joker.Description)
-		}
-
-		jokerInfoBox := gameInfoStyle.Height(5).Render(jokers)
-
-		return lipgloss.JoinVertical(
-			lipgloss.Left,
-			gameInfoBox,
-			jokerInfoBox,
-		)
-	}
-	gameInfo = fmt.Sprintf("%s Ante %d - %s\n", blindEmoji, m.gameState.Ante, m.gameState.Blind) +
+	gameInfo := fmt.Sprintf("%s Ante %d - %s\n", blindEmoji, m.gameState.Ante, m.gameState.Blind) +
 		fmt.Sprintf("🎯 Target: %d | Current Score: %d [%s] (%.1f%%)\n",
 			m.gameState.Target, m.gameState.Score, progressBar, progress*100) +
 		fmt.Sprintf("🎴 Hands Left: %d | 🗑️ Discards Left: %d | 💰 Money: $%d",
@@ -626,7 +652,8 @@ func (m TUIModel) isCardSelected(index int) bool {
 	return false
 }
 
-// toggleCardSelection toggles selection of a card at the given index
+// toggleCardSelection toggles selection of a card at the given index.
+// This
 func (m *TUIModel) toggleCardSelection(index int) {
 	if index < 0 || index >= len(m.cards) {
 		return
