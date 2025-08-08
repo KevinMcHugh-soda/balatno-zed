@@ -3,6 +3,8 @@ package main
 // Event represents something that happened in the game
 type Event interface {
 	EventType() string
+	// TODO: add a ToMsg() method. Or maybe not - that's specific to the tui
+	// ToMsg() Msg
 }
 
 type PlayerAction string

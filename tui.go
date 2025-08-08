@@ -448,14 +448,30 @@ func (m TUIModel) renderGameContent() string {
 
 	if m.shopInfo != nil {
 		gameInfo = fmt.Sprintf("Shop opened\n")
-	} else {
-		gameInfo = fmt.Sprintf("%s Ante %d - %s\n", blindEmoji, m.gameState.Ante, m.gameState.Blind) +
-			fmt.Sprintf("🎯 Target: %d | Current Score: %d [%s] (%.1f%%)\n",
-				m.gameState.Target, m.gameState.Score, progressBar, progress*100) +
-			fmt.Sprintf("🎴 Hands Left: %d | 🗑️ Discards Left: %d | 💰 Money: $%d",
-				m.gameState.Hands, m.gameState.Discards, m.gameState.Money)
 
+		gameInfoBox := gameInfoStyle.
+			Height(5).
+			Render(gameInfo)
+
+		jokers := ""
+
+		for idx, joker := range m.shopInfo.Items {
+			jokers += fmt.Sprintf("%d|%s (%d): %s\n", idx+1, joker.Name, joker.Cost, joker.Description)
+		}
+
+		jokerInfoBox := gameInfoStyle.Height(5).Render(jokers)
+
+		return lipgloss.JoinVertical(
+			lipgloss.Left,
+			gameInfoBox,
+			jokerInfoBox,
+		)
 	}
+	gameInfo = fmt.Sprintf("%s Ante %d - %s\n", blindEmoji, m.gameState.Ante, m.gameState.Blind) +
+		fmt.Sprintf("🎯 Target: %d | Current Score: %d [%s] (%.1f%%)\n",
+			m.gameState.Target, m.gameState.Score, progressBar, progress*100) +
+		fmt.Sprintf("🎴 Hands Left: %d | 🗑️ Discards Left: %d | 💰 Money: $%d",
+			m.gameState.Hands, m.gameState.Discards, m.gameState.Money)
 
 	gameInfoBox := gameInfoStyle.
 		Height(5).
