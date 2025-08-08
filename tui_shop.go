@@ -51,13 +51,43 @@ func (gm ShoppingMode) handleKeyPress(m *TUIModel, msg string) (tea.Model, tea.C
 		return m, nil
 
 	case "enter":
-		// purchase what's selected
-		// or move on
-		// if len(m.selectedCards) > 0 {
-		// 	m.handlePlay()
-		// } else {
-		// 	m.setStatusMessage("Select cards first using number keys 1-7")
-		// }
+		// Exit the shop
+		if m.actionRequestPending != nil {
+			// Capture response channel before clearing the pending request
+			responseChan := m.actionRequestPending.ResponseChan
+			m.actionRequestPending = nil
+
+			// Send exit shop response
+			go func() {
+				responseChan <- PlayerActionResponse{
+					Action: PlayerActionExitShop,
+					Params: nil,
+					Quit:   false,
+				}
+			}()
+
+			m.setStatusMessage("🚪 Exiting shop...")
+		}
+		return m, nil
+
+	case "r":
+		// Reroll shop items
+		if m.actionRequestPending != nil {
+			// Capture response channel before clearing the pending request
+			responseChan := m.actionRequestPending.ResponseChan
+			m.actionRequestPending = nil
+
+			// Send reroll response
+			go func() {
+				responseChan <- PlayerActionResponse{
+					Action: PlayerActionReroll,
+					Params: nil,
+					Quit:   false,
+				}
+			}()
+
+			m.setStatusMessage("🎲 Rerolling shop items...")
+		}
 		return m, nil
 	}
 	return m, nil

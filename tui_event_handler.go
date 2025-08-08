@@ -135,6 +135,7 @@ func (h *TUIEventHandler) GetPlayerAction(canDiscard bool) (PlayerAction, []stri
 func (h *TUIEventHandler) GetShopAction() (PlayerAction, []string, bool) {
 	// Basically everything is the same, except that an "r" means reroll, not resort.
 	action, params, quit := h.GetPlayerAction(false)
+	// we should be able to eliminate this soon, given the move to modes
 	if action == PlayerActionResort {
 		action = PlayerActionReroll
 	}
