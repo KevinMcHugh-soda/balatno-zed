@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -43,6 +44,22 @@ func (ms ShoppingMode) renderContent(m TUIModel) string {
 	)
 }
 
+func (gm ShoppingMode) handleKeyPress(m *TUIModel, msg string) (tea.Model, tea.Cmd) {
+	switch msg {
+	case "1", "2", "3", "4", "5", "6", "7":
+		if !m.showHelp {
+			return m, nil
+		}
+	case "h":
+		return m, nil
+	case "q":
+		return m, tea.Quit
+	default:
+		return m, nil
+	}
+	return m, nil
+}
+
 func renderJoker(m TUIModel, joker ShopItemData) string {
 	// TODO - style the cost in red if we can't afford it
 
@@ -68,4 +85,12 @@ func (gm ShopHelpMode) renderContent(m TUIModel) string {
 
 func (gm ShopHelpMode) toggleHelp() Mode {
 	return &ShoppingMode{}
+}
+
+func (gm ShopHelpMode) handleKeyPress(m *TUIModel, msg string) (tea.Model, tea.Cmd) {
+	if msg == "escape" || msg == "h" {
+		gm.toggleHelp()
+	}
+
+	return m, nil
 }

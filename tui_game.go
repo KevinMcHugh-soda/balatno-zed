@@ -2,8 +2,10 @@ package main
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -121,6 +123,56 @@ func renderHand(m TUIModel) string {
 	return handStyle.Height(10).Render(content.String())
 }
 
+func (gm GameMode) handleKeyPress(m *TUIModel, msg string) (tea.Model, tea.Cmd) {
+	switch msg {
+	case "1", "2", "3", "4", "5", "6", "7":
+		if !m.showHelp {
+			cardIndex, _ := strconv.Atoi(msg)
+			if cardIndex <= len(m.cards) {
+				m.toggleCardSelection(cardIndex - 1) // Convert to 0-based
+			} else {
+				m.setStatusMessage(fmt.Sprintf("Invalid card number: %d (only have %d cards)", cardIndex, len(m.cards)))
+			}
+		}
+		return m, nil
+
+	case "enter", "p":
+		if !m.showHelp {
+			if len(m.selectedCards) > 0 {
+				m.handlePlay()
+			} else {
+				m.setStatusMessage("Select cards first using number keys 1-7")
+			}
+		}
+		return m, nil
+
+	case "d":
+		if !m.showHelp {
+			if len(m.selectedCards) > 0 {
+				m.handleDiscard()
+			} else {
+				m.setStatusMessage("Select cards first using number keys 1-7")
+			}
+		}
+		return m, nil
+
+	case "r":
+		if !m.showHelp {
+			m.handleResort()
+		}
+		return m, nil
+
+	case "escape", "c":
+		if !m.showHelp {
+			m.selectedCards = []int{}
+			m.setStatusMessage("Selection cleared")
+		}
+		return m, nil
+	}
+
+	return m, nil
+}
+
 func (gm GameMode) toggleHelp() Mode {
 	return &GameHelpMode{}
 }
@@ -183,4 +235,12 @@ func (gm GameHelpMode) renderContent(m TUIModel) string {
 
 func (gm GameHelpMode) toggleHelp() Mode {
 	return &GameMode{}
+}
+
+func (gm GameHelpMode) handleKeyPress(m *TUIModel, msg string) (tea.Model, tea.Cmd) {
+	if msg == "escape" || msg == "h" {
+		gm.toggleHelp()
+	}
+
+	return m, nil
 }

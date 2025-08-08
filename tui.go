@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
@@ -295,6 +294,7 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // handleKeyPress processes keyboard input
 func (m TUIModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// Some keypresses should be handled the same way every time.
 	switch msg.String() {
 	case "ctrl+c", "q":
 		if m.actionRequestPending != nil {
@@ -315,54 +315,11 @@ func (m TUIModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case "h":
 		m.showHelp = !m.showHelp
-		return m, nil
-
-	case "1", "2", "3", "4", "5", "6", "7":
-		if !m.showHelp {
-			cardIndex, _ := strconv.Atoi(msg.String())
-			if cardIndex <= len(m.cards) {
-				m.toggleCardSelection(cardIndex - 1) // Convert to 0-based
-			} else {
-				m.setStatusMessage(fmt.Sprintf("Invalid card number: %d (only have %d cards)", cardIndex, len(m.cards)))
-			}
-		}
-		return m, nil
-
-	case "enter", "p":
-		if !m.showHelp {
-			if len(m.selectedCards) > 0 {
-				m.handlePlay()
-			} else {
-				m.setStatusMessage("Select cards first using number keys 1-7")
-			}
-		}
-		return m, nil
-
-	case "d":
-		if !m.showHelp {
-			if len(m.selectedCards) > 0 {
-				m.handleDiscard()
-			} else {
-				m.setStatusMessage("Select cards first using number keys 1-7")
-			}
-		}
-		return m, nil
-
-	case "r":
-		if !m.showHelp {
-			m.handleResort()
-		}
-		return m, nil
-
-	case "escape", "c":
-		if !m.showHelp {
-			m.selectedCards = []int{}
-			m.setStatusMessage("Selection cleared")
-		}
+		m.mode = m.mode.toggleHelp()
 		return m, nil
 	}
-
-	return m, nil
+	// But mostly what the keypress should do is handled by the mode we're currently in
+	return m.mode.handleKeyPress(&m, msg.String())
 }
 
 // View renders the UI
@@ -423,6 +380,7 @@ func tickCmd() tea.Cmd {
 type Mode interface {
 	renderContent(m TUIModel) string
 	toggleHelp() Mode
+	handleKeyPress(m *TUIModel, msg string) (tea.Model, tea.Cmd)
 }
 
 // getStatusMessage returns the current status message or default message
