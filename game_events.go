@@ -5,12 +5,25 @@ type Event interface {
 	EventType() string
 }
 
+type PlayerAction string
+
+const (
+	PlayerActionNone     = "none"
+	PlayerActionDiscard  = "discard"
+	PlayerActionPlay     = "play"
+	PlayerActionQuit     = "quit"
+	PlayerActionResort   = "resort"
+	PlayerActionExitShop = "exit_shop"
+	PlayerActionReroll   = "reroll"
+	PlayerActionBuy      = "buy"
+)
+
 // EventHandler processes game events and decides how to present them
 type EventHandler interface {
 	HandleEvent(event Event)
 	// Input requests return through channels or direct calls
-	GetPlayerAction(canDiscard bool) (action string, params []string, quit bool)
-	GetShopAction() (action string, quit bool)
+	GetPlayerAction(canDiscard bool) (action PlayerAction, params []string, quit bool)
+	GetShopAction() (action PlayerAction, params []string, quit bool)
 	Close()
 }
 

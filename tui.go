@@ -10,20 +10,50 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+// Bubbletea message types for game events
+type gameStartedMsg struct{}
+type gameOverMsg GameOverEvent
+type victoryMsg struct{}
+type gameStateChangedMsg GameStateChangedEvent
+type cardsDealtMsg CardsDealtEvent
+type handPlayedMsg HandPlayedEvent
+type cardsDiscardedMsg CardsDiscardedEvent
+type cardsResortedMsg CardsResortedEvent
+type blindDefeatedMsg BlindDefeatedEvent
+type anteCompletedMsg AnteCompletedEvent
+type newBlindStartedMsg NewBlindStartedEvent
+type shopOpenedMsg ShopOpenedEvent
+type shopItemPurchasedMsg ShopItemPurchasedEvent
+type shopRerolledMsg ShopRerolledEvent
+type shopClosedMsg struct{}
+type invalidActionMsg InvalidActionEvent
+type messageEventMsg MessageEvent
+type playerActionRequestMsg PlayerActionRequest
+type tickMsg time.Time
+
 // TUI model holds the application state
 type TUIModel struct {
+	// UI state
 	currentTime       time.Time
 	width             int
 	height            int
-	eventHandler      *TUIEventHandler
 	showHelp          bool
 	selectedCards     []int // indices of selected cards (0-based)
 	statusMessage     string
 	statusMessageTime time.Time
-}
 
-// tickMsg is sent every second to update the time
-type tickMsg time.Time
+	// Game state (updated by messages)
+	gameState  GameStateChangedEvent
+	cards      []Card
+	displayMap []int
+	sortMode   string
+	shopInfo   *ShopOpenedEvent
+	lastEvent  any
+
+	// Communication with game
+	actionRequestPending *PlayerActionRequest
+	program              *tea.Program
+}
 
 // Styles for the UI components
 var (
@@ -80,6 +110,9 @@ func (m TUIModel) Init() tea.Cmd {
 
 // Update handles messages and updates the model
 func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// if msg.(type) != tea.KeyMsg && msg.(type) != tickMsg{
+	// }
+
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
@@ -87,57 +120,240 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "ctrl+c", "q":
-			return m, tea.Quit
-		case "h":
-			m.showHelp = !m.showHelp
-			return m, nil
-		case "1", "2", "3", "4", "5", "6", "7":
-			if !m.showHelp && m.eventHandler != nil {
-				cardIndex, _ := strconv.Atoi(msg.String())
-				cards, _ := m.eventHandler.GetCards()
-				if cardIndex <= len(cards) {
-					m.toggleCardSelection(cardIndex - 1) // Convert to 0-based
-				} else {
-					m.setStatusMessage(fmt.Sprintf("Invalid card number: %d (only have %d cards)", cardIndex, len(cards)))
-				}
-			}
-			return m, nil
-		case "enter", "p":
-			if !m.showHelp && m.eventHandler != nil {
-				if len(m.selectedCards) > 0 {
-					m.handlePlay()
-				} else {
-					m.setStatusMessage("Select cards first using number keys 1-7")
-				}
-			}
-			return m, nil
-		case "d":
-			if !m.showHelp && m.eventHandler != nil {
-				if len(m.selectedCards) > 0 {
-					m.handleDiscard()
-				} else {
-					m.setStatusMessage("Select cards first using number keys 1-7")
-				}
-			}
-			return m, nil
-		case "r":
-			if !m.showHelp && m.eventHandler != nil {
-				m.eventHandler.HandleResortAction()
-			}
-		case "escape", "c":
-			if !m.showHelp {
-				m.selectedCards = []int{}
-				m.setStatusMessage("Selection cleared")
-			}
-			return m, nil
-		}
+		return m.handleKeyPress(msg)
 
 	case tickMsg:
 		m.currentTime = time.Time(msg)
-
 		return m, tickCmd()
+	}
+
+	m.lastEvent = msg
+	switch msg := msg.(type) {
+	// Game event messages
+	case gameStartedMsg:
+		m.setStatusMessage("🎮 Game started! Select cards with 1-7, play with Enter/P, discard with D")
+		return m, nil
+
+	case gameStateChangedMsg:
+		m.gameState = GameStateChangedEvent(msg)
+		return m, nil
+
+	case cardsDealtMsg:
+		event := CardsDealtEvent(msg)
+		m.cards = make([]Card, len(event.Cards))
+		copy(m.cards, event.Cards)
+		m.displayMap = make([]int, len(event.DisplayMapping))
+		copy(m.displayMap, event.DisplayMapping)
+		m.sortMode = event.SortMode
+		return m, nil
+
+	case handPlayedMsg:
+		event := HandPlayedEvent(msg)
+		var message string
+		scoreGained := event.FinalScore
+
+		// Check if this completed the blind
+		if event.NewTotalScore >= m.gameState.Target {
+			message = fmt.Sprintf("🎉 %s for +%d points! BLIND DEFEATED!", event.HandType, scoreGained)
+		} else {
+			handsLeft := m.gameState.Hands - 1
+			if handsLeft <= 0 {
+				message = fmt.Sprintf("💀 %s for +%d points, but Game Over! Final: %d/%d", event.HandType, scoreGained, event.NewTotalScore, m.gameState.Target)
+			} else {
+				progressPercent := float64(event.NewTotalScore) / float64(m.gameState.Target) * 100
+				message = fmt.Sprintf("✅ %s for +%d points! %d/%d (%.0f%%) | %d hands left", event.HandType, scoreGained, event.NewTotalScore, m.gameState.Target, progressPercent, handsLeft)
+			}
+		}
+		m.setStatusMessage(message)
+		return m, nil
+
+	case cardsDiscardedMsg:
+		event := CardsDiscardedEvent(msg)
+		var cardNames []string
+		for _, card := range event.DiscardedCards {
+			cardNames = append(cardNames, card.String())
+		}
+
+		discardedStr := strings.Join(cardNames, ", ")
+		if len(discardedStr) > 20 {
+			discardedStr = fmt.Sprintf("%d cards", event.NumCards)
+		}
+
+		var message string
+		if event.DiscardsLeft > 0 {
+			message = fmt.Sprintf("🗑️ Discarded %s, dealt new cards | %d discards remaining", discardedStr, event.DiscardsLeft)
+		} else {
+			message = fmt.Sprintf("🗑️ Discarded %s, dealt new cards | No more discards available!", discardedStr)
+		}
+		m.setStatusMessage(message)
+		return m, nil
+
+	case cardsResortedMsg:
+		event := CardsResortedEvent(msg)
+		m.setStatusMessage(fmt.Sprintf("🔄 Cards now sorted by %s", event.NewSortMode))
+		return m, nil
+
+	case blindDefeatedMsg:
+		event := BlindDefeatedEvent(msg)
+		var message string
+		switch event.BlindType {
+		case SmallBlind:
+			message = "🔸 SMALL BLIND DEFEATED! Advancing to Big Blind..."
+		case BigBlind:
+			message = "🔶 BIG BLIND CRUSHED! Prepare for the Boss Blind..."
+		case BossBlind:
+			message = "💀 BOSS BLIND ANNIHILATED! 💀"
+		}
+		m.setStatusMessage(message)
+		return m, nil
+
+	case anteCompletedMsg:
+		event := AnteCompletedEvent(msg)
+		m.setStatusMessage(fmt.Sprintf("🎊 ANTE %d COMPLETE! Starting Ante %d", event.CompletedAnte, event.NewAnte))
+		return m, nil
+
+	case newBlindStartedMsg:
+		event := NewBlindStartedEvent(msg)
+		blindEmoji := ""
+		switch event.Blind {
+		case SmallBlind:
+			blindEmoji = "🔸"
+		case BigBlind:
+			blindEmoji = "🔶"
+		case BossBlind:
+			blindEmoji = "💀"
+		}
+		m.setStatusMessage(fmt.Sprintf("%s NOW ENTERING: %s (Ante %d) | Target: %d points", blindEmoji, event.Blind, event.Ante, event.Target))
+		return m, nil
+
+	case shopOpenedMsg:
+		event := ShopOpenedEvent(msg)
+		shopCopy := event
+		m.shopInfo = &shopCopy
+		m.setStatusMessage("🛍️ Welcome to the Shop!")
+		return m, nil
+
+	case shopItemPurchasedMsg:
+		event := ShopItemPurchasedEvent(msg)
+		m.setStatusMessage(fmt.Sprintf("✨ Purchased %s! Remaining: $%d", event.Item.Name, event.RemainingMoney))
+		return m, nil
+
+	case shopRerolledMsg:
+		event := ShopRerolledEvent(msg)
+		m.setStatusMessage(fmt.Sprintf("💫 Shop rerolled for $%d! Next reroll: $%d", event.Cost, event.NewRerollCost))
+		return m, nil
+
+	case shopClosedMsg:
+		m.shopInfo = nil
+		m.setStatusMessage("👋 Left the shop")
+		return m, nil
+
+	case invalidActionMsg:
+		event := InvalidActionEvent(msg)
+		m.setStatusMessage(fmt.Sprintf("❌ %s", event.Reason))
+		return m, nil
+
+	case messageEventMsg:
+		event := MessageEvent(msg)
+		switch event.Type {
+		case "error":
+			m.setStatusMessage(fmt.Sprintf("❌ %s", event.Message))
+		case "warning":
+			m.setStatusMessage(fmt.Sprintf("⚠️ %s", event.Message))
+		case "success":
+			m.setStatusMessage(fmt.Sprintf("✅ %s", event.Message))
+		case "info":
+			m.setStatusMessage(fmt.Sprintf("ℹ️ %s", event.Message))
+		default:
+			m.setStatusMessage(event.Message)
+		}
+		return m, nil
+
+	case gameOverMsg:
+		event := GameOverEvent(msg)
+		m.setStatusMessage(fmt.Sprintf("💀 GAME OVER! Final: %d/%d (Ante %d)", event.FinalScore, event.Target, event.Ante))
+		return m, nil
+
+	case victoryMsg:
+		m.setStatusMessage("🏆 VICTORY! You conquered all 8 Antes! 🎉")
+		return m, nil
+
+	case playerActionRequestMsg:
+		request := PlayerActionRequest(msg)
+		m.actionRequestPending = &request
+		return m, nil
+	}
+
+	return m, nil
+}
+
+// handleKeyPress processes keyboard input
+func (m TUIModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "ctrl+c", "q":
+		if m.actionRequestPending != nil {
+			// Capture response channel before clearing the pending request
+			responseChan := m.actionRequestPending.ResponseChan
+			m.actionRequestPending = nil
+
+			// Send quit response
+			go func() {
+				responseChan <- PlayerActionResponse{
+					Action: PlayerActionNone,
+					Params: nil,
+					Quit:   true,
+				}
+			}()
+		}
+		return m, tea.Quit
+
+	case "h":
+		m.showHelp = !m.showHelp
+		return m, nil
+
+	case "1", "2", "3", "4", "5", "6", "7":
+		if !m.showHelp {
+			cardIndex, _ := strconv.Atoi(msg.String())
+			if cardIndex <= len(m.cards) {
+				m.toggleCardSelection(cardIndex - 1) // Convert to 0-based
+			} else {
+				m.setStatusMessage(fmt.Sprintf("Invalid card number: %d (only have %d cards)", cardIndex, len(m.cards)))
+			}
+		}
+		return m, nil
+
+	case "enter", "p":
+		if !m.showHelp {
+			if len(m.selectedCards) > 0 {
+				m.handlePlay()
+			} else {
+				m.setStatusMessage("Select cards first using number keys 1-7")
+			}
+		}
+		return m, nil
+
+	case "d":
+		if !m.showHelp {
+			if len(m.selectedCards) > 0 {
+				m.handleDiscard()
+			} else {
+				m.setStatusMessage("Select cards first using number keys 1-7")
+			}
+		}
+		return m, nil
+
+	case "r":
+		if !m.showHelp {
+			m.handleResort()
+		}
+		return m, nil
+
+	case "escape", "c":
+		if !m.showHelp {
+			m.selectedCards = []int{}
+			m.setStatusMessage("Selection cleared")
+		}
+		return m, nil
 	}
 
 	return m, nil
@@ -152,7 +368,7 @@ func (m TUIModel) View() string {
 	// Top bar
 	topBar := topBarStyle.
 		Width(m.width).
-		Render("🃏 Welcome to Balatno")
+		Render(fmt.Sprintf("🃏 Welcome to Balatno %s", m.lastEvent))
 
 	// Status bar (second from bottom)
 	statusBar := bottomBarStyle.
@@ -161,7 +377,7 @@ func (m TUIModel) View() string {
 
 	// Bottom bar with time and controls
 	timeStr := m.currentTime.Format("15:04:05")
-	controls := "⏰ " + timeStr + " | 1-7: select cards, Enter/P: play, D: discard, C: clear, R: resort,H: help, Q: quit"
+	controls := "⏰ " + timeStr + " | 1-7: select cards, Enter/P: play, D: discard, C: clear, R: resort, H: help, Q: quit"
 	bottomBar := bottomBarStyle.
 		Width(m.width).
 		Render(controls)
@@ -172,10 +388,8 @@ func (m TUIModel) View() string {
 	var content string
 	if m.showHelp {
 		content = m.renderHelp()
-	} else if m.eventHandler != nil {
-		content = m.renderGameContent()
 	} else {
-		content = "Loading game..."
+		content = m.renderGameContent()
 	}
 
 	renderedContent := mainContentStyle.
@@ -202,14 +416,8 @@ func tickCmd() tea.Cmd {
 
 // renderGameContent renders the main game area
 func (m TUIModel) renderGameContent() string {
-	if m.eventHandler == nil {
-		return "Game not initialized"
-	}
-
-	gameState := m.eventHandler.GetGameState()
-
 	// Game status info - fixed height section
-	progress := float64(gameState.Score) / float64(gameState.Target)
+	progress := float64(m.gameState.Score) / float64(m.gameState.Target)
 	if progress > 1.0 {
 		progress = 1.0
 	}
@@ -227,7 +435,7 @@ func (m TUIModel) renderGameContent() string {
 
 	// Blind type emojis
 	blindEmoji := ""
-	switch gameState.Blind {
+	switch m.gameState.Blind {
 	case SmallBlind:
 		blindEmoji = "🔸"
 	case BigBlind:
@@ -236,11 +444,18 @@ func (m TUIModel) renderGameContent() string {
 		blindEmoji = "💀"
 	}
 
-	gameInfo := fmt.Sprintf("%s Ante %d - %s\n", blindEmoji, gameState.Ante, gameState.Blind) +
-		fmt.Sprintf("🎯 Target: %d | Current Score: %d [%s] (%.1f%%)\n",
-			gameState.Target, gameState.Score, progressBar, progress*100) +
-		fmt.Sprintf("🎴 Hands Left: %d | 🗑️ Discards Left: %d | 💰 Money: $%d",
-			gameState.Hands, gameState.Discards, gameState.Money)
+	gameInfo := ""
+
+	if m.shopInfo != nil {
+		gameInfo = fmt.Sprintf("Shop opened\n")
+	} else {
+		gameInfo = fmt.Sprintf("%s Ante %d - %s\n", blindEmoji, m.gameState.Ante, m.gameState.Blind) +
+			fmt.Sprintf("🎯 Target: %d | Current Score: %d [%s] (%.1f%%)\n",
+				m.gameState.Target, m.gameState.Score, progressBar, progress*100) +
+			fmt.Sprintf("🎴 Hands Left: %d | 🗑️ Discards Left: %d | 💰 Money: $%d",
+				m.gameState.Hands, m.gameState.Discards, m.gameState.Money)
+
+	}
 
 	gameInfoBox := gameInfoStyle.
 		Height(5).
@@ -258,21 +473,16 @@ func (m TUIModel) renderGameContent() string {
 
 // renderHand renders the player's current hand of cards
 func (m TUIModel) renderHand() string {
-	if m.eventHandler == nil {
-		return handStyle.Height(10).Render("No cards in hand")
-	}
-
-	cards, _ := m.eventHandler.GetCards()
-	if len(cards) == 0 {
+	if len(m.cards) == 0 {
 		return handStyle.Height(10).Render("No cards in hand")
 	}
 
 	var content strings.Builder
 
 	// Hand cards area - fixed position
-	content.WriteString(fmt.Sprintf("🃏 Your Hand (%d cards):\n", len(cards)))
+	content.WriteString(fmt.Sprintf("🃏 Your Hand (%d cards):\n", len(m.cards)))
 	var cardViews []string
-	for i, card := range cards {
+	for i, card := range m.cards {
 		isSelected := m.isCardSelected(i)
 		cardStr := m.renderCard(card, false)
 
@@ -309,59 +519,52 @@ func (m TUIModel) renderHelp() string {
 
 	helpContent := `🎮 BALATNO HELP
 
-🎯 OBJECTIVE:
-   Reach the target score by playing poker hands before running out of hands/discards
+		🎯 OBJECTIVE:
+		   Reach the target score by playing poker hands before running out of hands/discards
 
-🃏 GAME ELEMENTS:
-   • Ante: Current level (1-8)
-   • Blinds: Small 🔸, Big 🔶, Boss 💀
-   • Score: Current total vs target score
-   • Hands: Number of plays remaining
-   • Discards: Number of discards remaining
-   • Money: Used for shop purchases
-   • Cards: Displayed as compact 2-char format (e.g., A♠, K♥)
-     - Hearts ♥: Red, Diamonds ♦: Orange
-     - Clubs ♣: Dark Blue, Spades ♠: Gray
+		🃏 GAME ELEMENTS:
+		   • Ante: Current level (1-8)
+		   • Blinds: Small 🔸, Big 🔶, Boss 💀
+		   • Score: Current total vs target score
+		   • Hands: Number of plays remaining
+		   • Discards: Number of discards remaining
+		   • Money: Used for shop purchases
+		   • Cards: Displayed as compact 2-char format (e.g., A♠, K♥)
+		     - Hearts ♥: Red, Diamonds ♦: Orange
+		     - Clubs ♣: Dark Blue, Spades ♠: Gray
 
-🎴 POKER HANDS (from weakest to strongest):
-   • High Card      • Pair           • Two Pair
-   • Three of Kind  • Straight       • Flush
-   • Full House     • Four of Kind   • Straight Flush
+		🎴 POKER HANDS (from weakest to strongest):
+		   • High Card      • Pair           • Two Pair
+		   • Three of Kind  • Straight       • Flush
+		   • Full House     • Four of Kind   • Straight Flush
 
-💰 SCORING:
-   • Base chips + multiplier for hand type
-   • Jokers can modify scoring significantly
-   • Unused hands/discards give bonus money
+		💰 SCORING:
+		   • Base chips + multiplier for hand type
+		   • Jokers can modify scoring significantly
+		   • Unused hands/discards give bonus money
 
-⌨️  GAMEPLAY CONTROLS:
-   • 1-7: Select/deselect cards by position
-   • Enter/P: Play selected cards
-   • D: Discard selected cards
-   • C/Escape: Clear selection
-   • H: Toggle this help screen
-   • Q: Quit game
+		⌨️  GAMEPLAY CONTROLS:
+		   • 1-7: Select/deselect cards by position
+		   • Enter/P: Play selected cards
+		   • D: Discard selected cards
+		   • C/Escape: Clear selection
+		   • H: Toggle this help screen
+		   • Q: Quit game
 
-📝 HOW TO PLAY:
-   1. Select cards using number keys (1-7)
-   2. Selected cards appear above your hand
-   3. Press Enter/P to play selected cards as a poker hand
-   4. Press D to discard selected cards for new ones
-   5. Use C to clear your selection
+		📝 HOW TO PLAY:
+		   1. Select cards using number keys (1-7)
+		   2. Selected cards appear above your hand
+		   3. Press Enter/P to play selected cards as a poker hand
+		   4. Press D to discard selected cards for new ones
+		   5. Use C to clear your selection
 
-🎯 GOAL: Beat the target score before running out of hands!`
+		🎯 GOAL: Beat the target score before running out of hands!`
 
 	return helpStyle.Render(helpContent)
 }
 
 // getStatusMessage returns the current status message or default message
 func (m TUIModel) getStatusMessage() string {
-	// Check for status message from event handler first
-	if m.eventHandler != nil {
-		if msg := m.eventHandler.GetStatusMessage(); msg != "" {
-			return msg
-		}
-	}
-
 	if m.statusMessage != "" {
 		return m.statusMessage
 	}
@@ -409,12 +612,7 @@ func (m TUIModel) isCardSelected(index int) bool {
 
 // toggleCardSelection toggles selection of a card at the given index
 func (m *TUIModel) toggleCardSelection(index int) {
-	if m.eventHandler == nil {
-		return
-	}
-
-	cards, _ := m.eventHandler.GetCards()
-	if index < 0 || index >= len(cards) {
+	if index < 0 || index >= len(m.cards) {
 		return
 	}
 
@@ -422,7 +620,7 @@ func (m *TUIModel) toggleCardSelection(index int) {
 	for i, selected := range m.selectedCards {
 		if selected == index {
 			// Remove from selection
-			card := cards[index]
+			card := m.cards[index]
 			m.selectedCards = append(m.selectedCards[:i], m.selectedCards[i+1:]...)
 			remaining := len(m.selectedCards)
 			if remaining > 0 {
@@ -441,7 +639,7 @@ func (m *TUIModel) toggleCardSelection(index int) {
 	}
 
 	m.selectedCards = append(m.selectedCards, index)
-	card := cards[index]
+	card := m.cards[index]
 	m.setStatusMessage(fmt.Sprintf("✓ Selected %s (card %d) | %d/5 cards selected", card.String(), index+1, len(m.selectedCards)))
 }
 
@@ -452,19 +650,35 @@ func (m *TUIModel) handlePlay() {
 		return
 	}
 
-	gameState := m.eventHandler.GetGameState()
-	if gameState.Hands <= 0 {
+	if m.gameState.Hands <= 0 {
 		m.setStatusMessage("No hands remaining!")
 		return
 	}
 
-	// Use event handler to handle the play action
-	m.eventHandler.HandlePlayAction(m.selectedCards)
+	if m.actionRequestPending != nil {
+		// Convert selected indices to string params for game logic
+		var params []string
+		for _, index := range m.selectedCards {
+			// Convert 0-based TUI index to 1-based display index for game logic
+			params = append(params, fmt.Sprintf("%d", index+1))
+		}
 
-	// Clear selection
-	m.selectedCards = []int{}
+		// Capture response channel before clearing the pending request
+		responseChan := m.actionRequestPending.ResponseChan
+		m.actionRequestPending = nil
 
-	// Status message will be updated by event handler when HandPlayedEvent is received
+		// Send response
+		go func() {
+			responseChan <- PlayerActionResponse{
+				Action: PlayerActionPlay,
+				Params: params,
+				Quit:   false,
+			}
+		}()
+
+		// Clear selection
+		m.selectedCards = []int{}
+	}
 }
 
 // handleDiscard processes discarding the selected cards
@@ -474,46 +688,94 @@ func (m *TUIModel) handleDiscard() {
 		return
 	}
 
-	gameState := m.eventHandler.GetGameState()
-	if gameState.Discards <= 0 {
+	if m.gameState.Discards <= 0 {
 		m.setStatusMessage("No discards remaining!")
 		return
 	}
 
-	// Use event handler to handle the discard action
-	m.eventHandler.HandleDiscardAction(m.selectedCards)
+	if m.actionRequestPending != nil && m.actionRequestPending.CanDiscard {
+		// Convert selected indices to string params for game logic
+		var params []string
+		for _, index := range m.selectedCards {
+			// Convert 0-based TUI index to 1-based display index for game logic
+			params = append(params, fmt.Sprintf("%d", index+1))
+		}
 
-	// Clear selection
-	m.selectedCards = []int{}
+		// Capture response channel before clearing the pending request
+		responseChan := m.actionRequestPending.ResponseChan
+		m.actionRequestPending = nil
 
-	// Status message will be updated by event handler when CardsDiscardedEvent is received
+		// Send response
+		go func() {
+			responseChan <- PlayerActionResponse{
+				Action: PlayerActionDiscard,
+				Params: params,
+				Quit:   false,
+			}
+		}()
+
+		// Clear selection
+		m.selectedCards = []int{}
+	} else {
+		m.setStatusMessage("Cannot discard at this time")
+	}
+}
+
+// handleResort processes resort action
+func (m *TUIModel) handleResort() {
+	if m.actionRequestPending != nil {
+		// Capture response channel before clearing the pending request
+		responseChan := m.actionRequestPending.ResponseChan
+		m.actionRequestPending = nil
+
+		// Send response
+		go func() {
+			responseChan <- PlayerActionResponse{
+				Action: PlayerActionResort,
+				Params: nil,
+				Quit:   false,
+			}
+		}()
+	}
+}
+
+// SetProgram allows the event handler to send messages to this TUI
+func (m *TUIModel) SetProgram(program *tea.Program) {
+	m.program = program
+}
+
+// SendMessage sends a bubbletea message to update the UI
+func (m *TUIModel) SendMessage(msg tea.Msg) {
+	if m.program != nil {
+		m.program.Send(msg)
+	}
 }
 
 // RunTUI starts the TUI application
 func RunTUI() error {
+	// Create TUI model
+	model := TUIModel{
+		currentTime:   time.Now(),
+		selectedCards: []int{},
+	}
+
+	// Create TUI program
+	program := tea.NewProgram(model, tea.WithAltScreen())
+
+	// Set the program reference so we can send messages
+	model.SetProgram(program)
+
 	// Create TUI event handler
 	eventHandler := NewTUIEventHandler()
+	eventHandler.SetTUIModel(&model)
 
 	// Create game with event handler
 	game := NewGame(eventHandler)
 
-	// Create TUI model
-	m := TUIModel{
-		currentTime:   time.Now(),
-		eventHandler:  eventHandler,
-		selectedCards: []int{},
-	}
-
-	// Link the event handler to the TUI model
-	eventHandler.SetTUIModel(&m)
-
 	// Start the game in a goroutine
 	go game.Run()
 
-	// Set initial status message
-	m.setStatusMessage("Welcome! Select cards with 1-7, play with Enter/P, discard with D")
-
-	p := tea.NewProgram(m, tea.WithAltScreen())
-	_, err := p.Run()
+	// Run the TUI
+	_, err := program.Run()
 	return err
 }

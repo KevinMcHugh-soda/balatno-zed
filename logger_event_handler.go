@@ -300,7 +300,7 @@ func (h *LoggerEventHandler) handleVictory() {
 }
 
 // GetPlayerAction gets input for player actions
-func (h *LoggerEventHandler) GetPlayerAction(canDiscard bool) (string, []string, bool) {
+func (h *LoggerEventHandler) GetPlayerAction(canDiscard bool) (PlayerAction, []string, bool) {
 	if canDiscard {
 		fmt.Print("(p)lay <cards>, (d)iscard <cards>, (r)esort, or (q)uit: ")
 	} else {
@@ -311,37 +311,37 @@ func (h *LoggerEventHandler) GetPlayerAction(canDiscard bool) (string, []string,
 		if err := h.scanner.Err(); err != nil {
 			fmt.Println("Error reading input:", err)
 		}
-		return "", nil, true
+		return PlayerActionNone, nil, true
 	}
 
 	input := strings.TrimSpace(h.scanner.Text())
 
 	if strings.ToLower(input) == "quit" || strings.ToLower(input) == "q" {
-		return "", nil, true
+		return PlayerActionNone, nil, true
 	}
 
 	if input == "" {
 		fmt.Println("Please enter an action")
-		return "", nil, false
+		return PlayerActionNone, nil, false
 	}
 
 	parts := strings.Fields(input)
 	if len(parts) < 1 {
 		fmt.Println("Please enter 'play <cards>' or 'discard <cards>'")
-		return "", nil, false
+		return PlayerActionNone, nil, false
 	}
 
-	action := strings.ToLower(parts[0])
-
+	actionChar := strings.ToLower(parts[0])
+	var selectedAction PlayerAction
 	// Support abbreviated commands
-	if action == "p" {
-		action = "play"
-	} else if action == "d" {
-		action = "discard"
-	} else if action == "r" {
-		action = "resort"
-	} else if action == "q" {
-		return "", nil, true
+	if actionChar == "p" {
+		selectedAction = PlayerActionPlay
+	} else if actionChar == "d" {
+		selectedAction = PlayerActionDiscard
+	} else if actionChar == "r" {
+		selectedAction = PlayerActionResort
+	} else if actionChar == "q" {
+		return PlayerActionNone, nil, true
 	}
 
 	var params []string
@@ -349,26 +349,44 @@ func (h *LoggerEventHandler) GetPlayerAction(canDiscard bool) (string, []string,
 		params = parts[1:]
 	}
 
-	return action, params, false
+	return selectedAction, params, false
 }
 
 // GetShopAction gets input for shop actions
-func (h *LoggerEventHandler) GetShopAction() (string, bool) {
+func (h *LoggerEventHandler) GetShopAction() (PlayerAction, []string, bool) {
 	fmt.Print("Shop action (buy <number>, reroll, exit/q): ")
 
 	if !h.scanner.Scan() {
 		if err := h.scanner.Err(); err != nil {
 			fmt.Println("Error reading input:", err)
 		}
-		return "", true
+		return PlayerActionNone, nil, true
 	}
 
 	input := strings.TrimSpace(h.scanner.Text())
 	if strings.ToLower(input) == "exit" || strings.ToLower(input) == "q" || input == "" {
-		return "exit", false
+		return PlayerActionExitShop, nil, false
 	}
 
-	return input, false
+	parts := strings.Split(input, "")
+	params := make([]string, 0)
+	for _, part := range parts[1:] {
+		if strings.TrimSpace(part) != "" {
+			params = append(params, part)
+		}
+	}
+	var action PlayerAction
+	switch strings.ToLower(parts[0]) {
+	case "b":
+		action = PlayerActionBuy
+	case "r":
+		action = PlayerActionReroll
+	default:
+		fmt.Println("No action recognized", input)
+		action = PlayerActionNone
+	}
+	// convert the option
+	return action, params, false
 }
 
 // Close cleans up resources

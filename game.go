@@ -5,7 +5,6 @@ import (
 	"math/rand"
 	"sort"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -166,11 +165,11 @@ func (g *Game) Run() {
 				break
 			}
 
-			if action == "play" {
+			if action == PlayerActionPlay {
 				g.handlePlayAction(params)
-			} else if action == "discard" {
+			} else if action == PlayerActionDiscard {
 				g.handleDiscardAction(params)
-			} else if action == "resort" {
+			} else if action == PlayerActionResort {
 				g.handleResortAction()
 			}
 		}
@@ -543,15 +542,15 @@ func (g *Game) showShop() {
 	})
 
 	for {
-		action, quit := g.eventEmitter.handler.GetShopAction()
+		action, params, quit := g.eventEmitter.handler.GetShopAction()
 		if quit {
 			return
 		}
 
-		if action == "exit" {
+		if action == PlayerActionExitShop {
 			g.eventEmitter.EmitEvent(ShopClosedEvent{})
 			return
-		} else if action == "reroll" {
+		} else if action == PlayerActionReroll {
 			if g.money >= g.rerollCost {
 				oldCost := g.rerollCost
 				g.money -= g.rerollCost
@@ -594,9 +593,9 @@ func (g *Game) showShop() {
 					Reason: fmt.Sprintf("Not enough money to reroll! Need $%d more.", g.rerollCost-g.money),
 				})
 			}
-		} else if strings.HasPrefix(action, "buy ") {
-			choiceStr := strings.TrimPrefix(action, "buy ")
-			if choice, err := strconv.Atoi(choiceStr); err == nil && choice >= 1 && choice <= len(shopItems) {
+		} else if action == PlayerActionBuy {
+			choice := params[0]
+			if choice, err := strconv.Atoi(choice); err == nil && choice >= 1 && choice <= len(shopItems) {
 				selectedJoker := shopItems[choice-1]
 				if selectedJoker.Name == "" {
 					g.eventEmitter.EmitEvent(InvalidActionEvent{
@@ -635,13 +634,13 @@ func (g *Game) showShop() {
 			} else {
 				g.eventEmitter.EmitEvent(InvalidActionEvent{
 					Action: "buy",
-					Reason: "Invalid item number.",
+					Reason: fmt.Sprintf("Invalid item number (given %v).", params),
 				})
 			}
 		} else {
 			g.eventEmitter.EmitEvent(InvalidActionEvent{
 				Action: "unknown",
-				Reason: "Invalid action. Use 'buy <number>', 'reroll', or 'exit'.",
+				Reason: fmt.Sprintf("Invalid action (given '%s'). Use 'buy <number>', 'reroll', or 'exit'.", action),
 			})
 		}
 	}
@@ -672,14 +671,14 @@ func (g *Game) showShopWithItems(availableJokers []Joker, shopItems []Joker) {
 	})
 
 	for {
-		action, quit := g.eventEmitter.handler.GetShopAction()
+		action, params, quit := g.eventEmitter.handler.GetShopAction()
 		if quit {
 			return
 		}
 
-		if action == "exit" {
+		if action == PlayerActionExitShop {
 			return
-		} else if action == "reroll" {
+		} else if action == PlayerActionReroll {
 			if g.money >= g.rerollCost {
 				oldCost := g.rerollCost
 				g.money -= g.rerollCost
@@ -721,9 +720,9 @@ func (g *Game) showShopWithItems(availableJokers []Joker, shopItems []Joker) {
 					Reason: fmt.Sprintf("Not enough money to reroll! Need $%d more.", g.rerollCost-g.money),
 				})
 			}
-		} else if strings.HasPrefix(action, "buy ") {
-			choiceStr := strings.TrimPrefix(action, "buy ")
-			if choice, err := strconv.Atoi(choiceStr); err == nil && choice >= 1 && choice <= len(shopItems) {
+		} else if action == PlayerActionBuy {
+			choice := params[0]
+			if choice, err := strconv.Atoi(choice); err == nil && choice >= 1 && choice <= len(shopItems) {
 				selectedJoker := shopItems[choice-1]
 				if selectedJoker.Name == "" {
 					g.eventEmitter.EmitEvent(InvalidActionEvent{
@@ -762,13 +761,13 @@ func (g *Game) showShopWithItems(availableJokers []Joker, shopItems []Joker) {
 			} else {
 				g.eventEmitter.EmitEvent(InvalidActionEvent{
 					Action: "buy",
-					Reason: "Invalid item number.",
+					Reason: fmt.Sprintf("Invalid item number (given %v).", params),
 				})
 			}
 		} else {
 			g.eventEmitter.EmitEvent(InvalidActionEvent{
 				Action: "unknown",
-				Reason: "Invalid action. Use 'buy <number>', 'reroll', or 'exit'.",
+				Reason: fmt.Sprintf("Invalid action (given '%d'). Use 'buy <number>', 'reroll', or 'exit'.", action),
 			})
 		}
 	}

@@ -1,28 +1,14 @@
 package main
 
 import (
-	"fmt"
-	"strings"
-	"sync"
 	"time"
 )
 
-// TUIEventHandler handles events for TUI mode and coordinates with the TUI
+// TUIEventHandler handles events for TUI mode and sends messages to bubbletea
 type TUIEventHandler struct {
-	// Game state for TUI to display
-	gameState     GameStateChangedEvent
-	cards         []Card
-	displayMap    []int
-	sortMode      string
-	statusMessage string
-	shopInfo      *ShopOpenedEvent
-
 	// Communication channels
 	actionChan chan PlayerActionRequest
 	shopChan   chan string
-
-	// Synchronization
-	mutex sync.RWMutex
 
 	// TUI integration
 	tuiModel *TUIModel
@@ -36,7 +22,7 @@ type PlayerActionRequest struct {
 
 // PlayerActionResponse represents the player's response
 type PlayerActionResponse struct {
-	Action string
+	Action PlayerAction
 	Params []string
 	Quit   bool
 }
@@ -51,160 +37,108 @@ func NewTUIEventHandler() *TUIEventHandler {
 
 // SetTUIModel links the event handler to the TUI model
 func (h *TUIEventHandler) SetTUIModel(model *TUIModel) {
-	h.mutex.Lock()
-	defer h.mutex.Unlock()
 	h.tuiModel = model
 }
 
-// HandleEvent processes game events and updates TUI state
+// HandleEvent processes game events and sends them as bubbletea messages
 func (h *TUIEventHandler) HandleEvent(event Event) {
-	h.mutex.Lock()
-	defer h.mutex.Unlock()
+	if h.tuiModel == nil {
+		return
+	}
 
 	switch e := event.(type) {
 	case GameStartedEvent:
-		h.statusMessage = "🎮 Game started! Select cards with 1-7, play with Enter/P, discard with D"
+		h.tuiModel.SendMessage(gameStartedMsg{})
 
 	case GameStateChangedEvent:
-		h.gameState = e
+		h.tuiModel.SendMessage(gameStateChangedMsg(e))
 
 	case CardsDealtEvent:
-		h.cards = make([]Card, len(e.Cards))
-		copy(h.cards, e.Cards)
-		h.displayMap = make([]int, len(e.DisplayMapping))
-		copy(h.displayMap, e.DisplayMapping)
-		h.sortMode = e.SortMode
+		h.tuiModel.SendMessage(cardsDealtMsg(e))
 
 	case HandPlayedEvent:
-		var msg string
-		scoreGained := e.FinalScore
-
-		// Check if this completed the blind
-		if e.NewTotalScore >= h.gameState.Target {
-			msg = fmt.Sprintf("🎉 %s for +%d points! BLIND DEFEATED!", e.HandType, scoreGained)
-		} else {
-			handsLeft := h.gameState.Hands - 1
-			if handsLeft <= 0 {
-				msg = fmt.Sprintf("💀 %s for +%d points, but Game Over! Final: %d/%d", e.HandType, scoreGained, e.NewTotalScore, h.gameState.Target)
-			} else {
-				progressPercent := float64(e.NewTotalScore) / float64(h.gameState.Target) * 100
-				msg = fmt.Sprintf("✅ %s for +%d points! %d/%d (%.0f%%) | %d hands left", e.HandType, scoreGained, e.NewTotalScore, h.gameState.Target, progressPercent, handsLeft)
-			}
-		}
-		h.statusMessage = msg
+		h.tuiModel.SendMessage(handPlayedMsg(e))
 
 	case CardsDiscardedEvent:
-		var cardNames []string
-		for _, card := range e.DiscardedCards {
-			cardNames = append(cardNames, card.String())
-		}
-
-		discardedStr := strings.Join(cardNames, ", ")
-		if len(discardedStr) > 20 {
-			discardedStr = fmt.Sprintf("%d cards", e.NumCards)
-		}
-
-		if e.DiscardsLeft > 0 {
-			h.statusMessage = fmt.Sprintf("🗑️ Discarded %s, dealt new cards | %d discards remaining", discardedStr, e.DiscardsLeft)
-		} else {
-			h.statusMessage = fmt.Sprintf("🗑️ Discarded %s, dealt new cards | No more discards available!", discardedStr)
-		}
+		h.tuiModel.SendMessage(cardsDiscardedMsg(e))
 
 	case CardsResortedEvent:
-		h.statusMessage = fmt.Sprintf("🔄 Cards now sorted by %s", e.NewSortMode)
+		h.tuiModel.SendMessage(cardsResortedMsg(e))
 
 	case BlindDefeatedEvent:
-		var msg string
-		switch e.BlindType {
-		case SmallBlind:
-			msg = "🔸 SMALL BLIND DEFEATED! Advancing to Big Blind..."
-		case BigBlind:
-			msg = "🔶 BIG BLIND CRUSHED! Prepare for the Boss Blind..."
-		case BossBlind:
-			msg = "💀 BOSS BLIND ANNIHILATED! 💀"
-		}
-		h.statusMessage = msg
+		h.tuiModel.SendMessage(blindDefeatedMsg(e))
 
 	case AnteCompletedEvent:
-		h.statusMessage = fmt.Sprintf("🎊 ANTE %d COMPLETE! Starting Ante %d", e.CompletedAnte, e.NewAnte)
+		h.tuiModel.SendMessage(anteCompletedMsg(e))
 
 	case NewBlindStartedEvent:
-		blindEmoji := ""
-		switch e.Blind {
-		case SmallBlind:
-			blindEmoji = "🔸"
-		case BigBlind:
-			blindEmoji = "🔶"
-		case BossBlind:
-			blindEmoji = "💀"
-		}
-		h.statusMessage = fmt.Sprintf("%s NOW ENTERING: %s (Ante %d) | Target: %d points", blindEmoji, e.Blind, e.Ante, e.Target)
+		h.tuiModel.SendMessage(newBlindStartedMsg(e))
 
 	case ShopOpenedEvent:
-		shopCopy := e
-		h.shopInfo = &shopCopy
-		h.statusMessage = "🛍️ Welcome to the Shop! (Shop interface not yet implemented in TUI)"
+		h.tuiModel.SendMessage(shopOpenedMsg(e))
 
 	case ShopItemPurchasedEvent:
-		h.statusMessage = fmt.Sprintf("✨ Purchased %s! Remaining: $%d", e.Item.Name, e.RemainingMoney)
+		h.tuiModel.SendMessage(shopItemPurchasedMsg(e))
 
 	case ShopRerolledEvent:
-		h.statusMessage = fmt.Sprintf("💫 Shop rerolled for $%d! Next reroll: $%d", e.Cost, e.NewRerollCost)
+		h.tuiModel.SendMessage(shopRerolledMsg(e))
 
 	case ShopClosedEvent:
-		h.shopInfo = nil
-		h.statusMessage = "👋 Left the shop"
+		h.tuiModel.SendMessage(shopClosedMsg{})
 
 	case InvalidActionEvent:
-		h.statusMessage = fmt.Sprintf("❌ %s", e.Reason)
+		h.tuiModel.SendMessage(invalidActionMsg(e))
 
 	case MessageEvent:
-		switch e.Type {
-		case "error":
-			h.statusMessage = fmt.Sprintf("❌ %s", e.Message)
-		case "warning":
-			h.statusMessage = fmt.Sprintf("⚠️ %s", e.Message)
-		case "success":
-			h.statusMessage = fmt.Sprintf("✅ %s", e.Message)
-		case "info":
-			h.statusMessage = fmt.Sprintf("ℹ️ %s", e.Message)
-		default:
-			h.statusMessage = e.Message
-		}
+		h.tuiModel.SendMessage(messageEventMsg(e))
 
 	case GameOverEvent:
-		h.statusMessage = fmt.Sprintf("💀 GAME OVER! Final: %d/%d (Ante %d)", e.FinalScore, e.Target, e.Ante)
+		h.tuiModel.SendMessage(gameOverMsg(e))
 
 	case VictoryEvent:
-		h.statusMessage = "🏆 VICTORY! You conquered all 8 Antes! 🎉"
+		h.tuiModel.SendMessage(victoryMsg{})
 	}
 }
 
 // GetPlayerAction waits for player input from the TUI
-func (h *TUIEventHandler) GetPlayerAction(canDiscard bool) (string, []string, bool) {
+func (h *TUIEventHandler) GetPlayerAction(canDiscard bool) (PlayerAction, []string, bool) {
 	responseChan := make(chan PlayerActionResponse)
 	request := PlayerActionRequest{
 		CanDiscard:   canDiscard,
 		ResponseChan: responseChan,
 	}
 
-	// Send request to TUI
-	select {
-	case h.actionChan <- request:
-	case <-time.After(100 * time.Millisecond):
-		// If the channel is full, return empty action to keep game loop responsive
-		return "", nil, false
+	// Send action request message to TUI
+	if h.tuiModel != nil {
+		h.tuiModel.SendMessage(playerActionRequestMsg(request))
 	}
 
-	// Wait for response
-	response := <-responseChan
-	return response.Action, response.Params, response.Quit
+	// Wait for response with timeout
+	select {
+	case response := <-responseChan:
+		return response.Action, response.Params, response.Quit
+	case <-time.After(100 * time.Millisecond):
+		// If no response quickly, try sending to channel as fallback
+		select {
+		case h.actionChan <- request:
+			// Wait for response
+			response := <-responseChan
+			return response.Action, response.Params, response.Quit
+		case <-time.After(50000 * time.Millisecond):
+			// Return empty action to keep game loop responsive
+			return PlayerActionNone, nil, false
+		}
+	}
 }
 
 // GetShopAction waits for shop action from the TUI
-func (h *TUIEventHandler) GetShopAction() (string, bool) {
-	// For now, automatically exit shop in TUI mode since shop UI isn't implemented
-	return "exit", false
+func (h *TUIEventHandler) GetShopAction() (PlayerAction, []string, bool) {
+	// Basically everything is the same, except that an "r" means reroll, not resort.
+	action, params, quit := h.GetPlayerAction(false)
+	if action == PlayerActionResort {
+		action = PlayerActionReroll
+	}
+	return action, params, quit
 }
 
 // Close cleans up resources
@@ -213,107 +147,39 @@ func (h *TUIEventHandler) Close() {
 	close(h.shopChan)
 }
 
-// Methods for TUI to access current state
-func (h *TUIEventHandler) GetGameState() GameStateChangedEvent {
-	h.mutex.RLock()
-	defer h.mutex.RUnlock()
-	return h.gameState
-}
-
-func (h *TUIEventHandler) GetCards() ([]Card, []int) {
-	h.mutex.RLock()
-	defer h.mutex.RUnlock()
-	return h.cards, h.displayMap
-}
-
-func (h *TUIEventHandler) GetStatusMessage() string {
-	h.mutex.RLock()
-	defer h.mutex.RUnlock()
-	return h.statusMessage
-}
-
-func (h *TUIEventHandler) ClearStatusMessage() {
-	h.mutex.Lock()
-	defer h.mutex.Unlock()
-	h.statusMessage = ""
-}
-
-func (h *TUIEventHandler) GetShopInfo() *ShopOpenedEvent {
-	h.mutex.RLock()
-	defer h.mutex.RUnlock()
-	return h.shopInfo
-}
-
-// Methods for TUI to send actions back to the game
-func (h *TUIEventHandler) SendPlayerAction(action string, params []string, quit bool) {
-	// Check if there's a pending request
-	select {
-	case request := <-h.actionChan:
-		// Send response
-		response := PlayerActionResponse{
-			Action: action,
-			Params: params,
-			Quit:   quit,
-		}
-		select {
-		case request.ResponseChan <- response:
-		case <-time.After(100 * time.Millisecond):
-			// Response channel full, ignore
-		}
-	default:
-		// No pending request, store the action for later or ignore
-	}
-}
+// SendPlayerAction processes player actions from the TUI
+// func (h *TUIEventHandler) SendPlayerAction(action PlayerAction, params []string, quit bool) {
+// 	// Check if there's a pending request
+// 	select {
+// 	case request := <-h.actionChan:
+// 		// Send response
+// 		response := PlayerActionResponse{
+// 			Action: action,
+// 			Params: params,
+// 			Quit:   quit,
+// 		}
+// 		select {
+// 		case request.ResponseChan <- response:
+// 		case <-time.After(100 * time.Millisecond):
+// 			// Response channel full, ignore
+// 		}
+// 	default:
+// 		// No pending request, ignore
+// 	}
+// }
 
 // Helper method to check if there's a pending action request
 func (h *TUIEventHandler) HasPendingActionRequest() bool {
 	select {
-	case <-h.actionChan:
+	case request := <-h.actionChan:
 		// Put it back
-		return true
+		select {
+		case h.actionChan <- request:
+			return true
+		default:
+			return false
+		}
 	default:
 		return false
 	}
-}
-
-// Helper method for TUI to handle play action
-func (h *TUIEventHandler) HandlePlayAction(selectedCards []int) {
-	if len(selectedCards) == 0 {
-		return
-	}
-
-	// Convert selected indices to string params for game logic
-	var params []string
-	for _, index := range selectedCards {
-		// Convert 0-based TUI index to 1-based display index for game logic
-		params = append(params, fmt.Sprintf("%d", index+1))
-	}
-
-	h.SendPlayerAction("play", params, false)
-}
-
-// Helper method for TUI to handle discard action
-func (h *TUIEventHandler) HandleDiscardAction(selectedCards []int) {
-	if len(selectedCards) == 0 {
-		return
-	}
-
-	// Convert selected indices to string params for game logic
-	var params []string
-	for _, index := range selectedCards {
-		// Convert 0-based TUI index to 1-based display index for game logic
-		params = append(params, fmt.Sprintf("%d", index+1))
-	}
-
-	h.SendPlayerAction("discard", params, false)
-}
-
-// Helper method for TUI to handle resort action
-func (h *TUIEventHandler) HandleResortAction() {
-	h.SendPlayerAction("resort", nil, false)
-}
-
-// Helper method for TUI to handle quit action
-func (h *TUIEventHandler) HandleQuitAction() {
-	h.SendPlayerAction("", nil, true)
 }
