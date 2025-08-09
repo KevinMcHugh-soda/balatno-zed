@@ -60,51 +60,6 @@ type TUIModel struct {
 	program              *tea.Program
 }
 
-// Styles for the UI components
-var (
-	topBarStyle = lipgloss.NewStyle().
-			Background(lipgloss.Color("62")).
-			Foreground(lipgloss.Color("230")).
-			Bold(true).
-			Padding(0, 1)
-
-	bottomBarStyle = lipgloss.NewStyle().
-			Background(lipgloss.Color("240")).
-			Foreground(lipgloss.Color("252")).
-			Padding(0, 1)
-
-	mainContentStyle = lipgloss.NewStyle().
-				Padding(1)
-
-	gameInfoStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("62")).
-			Padding(0, 1).
-			Margin(0, 1)
-
-	handStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("33")).
-			Padding(1).
-			Margin(1, 1)
-
-	heartsCardStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("196")).
-			Margin(0, 1)
-
-	diamondsCardStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("214")).
-				Margin(0, 1)
-
-	clubsCardStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("21")).
-			Margin(0, 1)
-
-	spadesCardStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("240")).
-			Margin(0, 1)
-)
-
 // getTimeoutDuration reads the BALATRO_TIMEOUT environment variable or returns default 60s
 func getTimeoutDuration() time.Duration {
 	timeoutStr := os.Getenv("BALATRO_TIMEOUT")
@@ -123,8 +78,6 @@ func getTimeoutDuration() time.Duration {
 
 // Init returns the initial command
 func (m TUIModel) Init() tea.Cmd {
-	m.timeoutDuration = getTimeoutDuration()
-	m.lastActivity = time.Now()
 	return tea.Batch(
 		tea.EnterAltScreen,
 		tickCmd(),
@@ -398,11 +351,11 @@ func (m TUIModel) View() string {
 		Render(m.getStatusMessage())
 
 	// Bottom bar with time and controls
-	timeStr := m.currentTime.Format("15:04:05")
+	timeStr := time.Now().Format("15:04:05")
 	timeoutRemaining := m.timeoutDuration - time.Since(m.lastActivity)
-	if timeoutRemaining < 0 {
-		timeoutRemaining = 0
-	}
+	// if timeoutRemaining < 0 {
+	// 	timeoutRemaining = 0
+	// }
 	timeoutStr := fmt.Sprintf("%.0fs", timeoutRemaining.Seconds())
 	controls := "⏰ " + timeStr + " | Timeout: " + timeoutStr + " | 1-7: select cards, Enter/P: play, D: discard, C: clear, R: resort, H: help, Q: quit"
 	bottomBar := bottomBarStyle.
@@ -617,9 +570,12 @@ func (m *TUIModel) SendMessage(msg tea.Msg) {
 func RunTUI() error {
 	// Create TUI model
 	model := TUIModel{
-		currentTime:   time.Now(),
-		selectedCards: []int{},
+		timeoutDuration: getTimeoutDuration(),
+		lastActivity:    time.Now(),
+		currentTime:     time.Now(),
+		selectedCards:   []int{},
 	}
+	// model.Init()
 
 	// Create TUI program
 	program := tea.NewProgram(model, tea.WithAltScreen())
