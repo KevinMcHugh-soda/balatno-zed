@@ -117,17 +117,9 @@ func (h *TUIEventHandler) GetPlayerAction(canDiscard bool) (PlayerAction, []stri
 	select {
 	case response := <-responseChan:
 		return response.Action, response.Params, response.Quit
-	case <-time.After(100 * time.Millisecond):
-		// If no response quickly, try sending to channel as fallback
-		select {
-		case h.actionChan <- request:
-			// Wait for response
-			response := <-responseChan
-			return response.Action, response.Params, response.Quit
-		case <-time.After(50000 * time.Millisecond):
-			// Return empty action to keep game loop responsive
-			return PlayerActionNone, nil, false
-		}
+	case <-time.After(30 * time.Second):
+		// Return empty action to keep game loop responsive
+		return PlayerActionNone, nil, false
 	}
 }
 
