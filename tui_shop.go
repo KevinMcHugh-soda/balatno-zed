@@ -2,13 +2,17 @@ package main
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
 
-type ShoppingMode struct{}
+type ShoppingMode struct {
+	selectedItem      *int
+	consecutiveEnters int
+}
 
 func (ms ShoppingMode) renderContent(m TUIModel) string {
 	gameInfo := fmt.Sprintf("%s Ante %d - %s✅\n", "🏪", m.gameState.Ante, m.gameState.Blind) +
@@ -52,10 +56,50 @@ func (gm ShoppingMode) handleKeyPress(m *TUIModel, msg string) (tea.Model, tea.C
 	switch msg {
 	case "1", "2", "3", "4", "5", "6", "7":
 		// select a shop item
+		i := int(msg[0] - '0')
+
+		item := m.shopInfo.Items[i-1]
+		if !item.CanAfford {
+			m.setStatusMessage("Not enough money!")
+			return m, nil
+		}
+		gm.selectedItem = &i
 		return m, nil
 
 	case "enter":
 		// Exit the shop
+		if gm.selectedItem != nil {
+			item := m.shopInfo.Items[*gm.selectedItem]
+			if !item.CanAfford {
+				m.setStatusMessage("Not enough money!")
+				return m, nil
+			}
+
+			if m.actionRequestPending != nil {
+				responseChan := m.actionRequestPending.ResponseChan
+				m.actionRequestPending = nil
+
+				go func() {
+					responseChan <- PlayerActionResponse{
+						Action: PlayerActionBuy,
+						Params: []string{strconv.Itoa(*gm.selectedItem)},
+						Quit:   false,
+					}
+				}()
+
+				m.setStatusMessage("🚪 Exiting shop...")
+			}
+			// m.cards = append(m.cards, item)
+			m.setStatusMessage(fmt.Sprintf("🛒 Purchased %s!", item.Name))
+			return m, nil
+		}
+
+		// if gm.consecutiveEnters == 0 {
+		// 	gm.consecutiveEnters++
+		// 	m.setStatusMessage("Press 'Enter' again to exit shop")
+		// 	return m, nil
+		// }
+
 		if m.actionRequestPending != nil {
 			// Capture response channel before clearing the pending request
 			responseChan := m.actionRequestPending.ResponseChan
@@ -111,6 +155,12 @@ func (gm ShoppingMode) toggleHelp() Mode {
 	return &ShopHelpMode{}
 }
 
+func (gm ShoppingMode) getControls() string {
+	// TODO I do think we'll need the game state to know how many shop items are available
+	// but for now hardcode to 4
+	return " | 1-4: select item, Enter (with selected): purchase, Enter (without selected): exit, C: clear, R: reroll, H: help, ESC: exit, Q: quit"
+}
+
 type ShopHelpMode struct{}
 
 // renderHelp renders the help screen
@@ -125,10 +175,16 @@ func (gm ShopHelpMode) toggleHelp() Mode {
 func (gm ShopHelpMode) handleKeyPress(m *TUIModel, msg string) (tea.Model, tea.Cmd) {
 	// Update last activity time on any key press
 	m.lastActivity = time.Now()
-
-	if msg == "escape" || msg == "h" {
+	// fmt.Println(msg)
+	m.setStatusMessage(msg)
+	if msg == "esc" || msg == "h" || msg == "enter" {
+		m.showHelp = !m.showHelp
 		gm.toggleHelp()
 	}
 
 	return m, nil
+}
+
+func (gm ShopHelpMode) getControls() string {
+	return " | Enter/Esc/H: exit help, Q: quit"
 }

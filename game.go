@@ -385,30 +385,6 @@ func (g *Game) removeAndDealCards(selectedIndices []int) {
 	g.updateDisplayToOriginalMapping()
 }
 
-// calculateBlindReward calculates money earned for completing a blind
-func (g *Game) calculateBlindReward() int {
-	// Base reward for blind type
-	var baseReward int
-	switch g.currentBlind {
-	case SmallBlind:
-		baseReward = SmallBlindReward
-	case BigBlind:
-		baseReward = BigBlindReward
-	case BossBlind:
-		baseReward = BossBlindReward
-	}
-
-	// Bonus for unused resources
-	unusedHands := MaxHands - g.handsPlayed
-	unusedDiscards := MaxDiscards - g.discardsUsed
-	bonusReward := unusedHands*UnusedHandReward + unusedDiscards*UnusedDiscardReward
-
-	// Joker rewards
-	jokerReward := CalculateJokerRewards(g.jokers)
-
-	return baseReward + bonusReward + jokerReward
-}
-
 // handleBlindCompletion handles completing a blind and advancing to the next
 func (g *Game) handleBlindCompletion() {
 

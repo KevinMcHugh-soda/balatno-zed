@@ -173,6 +173,10 @@ func (gm GameMode) toggleHelp() Mode {
 	return &GameHelpMode{}
 }
 
+func (gm GameMode) getControls() string {
+	return " | 1-7: select cards, Enter/P: play, D: discard, C: clear, R: resort, H: help, Q: quit"
+}
+
 type GameHelpMode struct{}
 
 // renderHelp renders the help screen
@@ -236,10 +240,15 @@ func (gm GameHelpMode) toggleHelp() Mode {
 func (gm GameHelpMode) handleKeyPress(m *TUIModel, msg string) (tea.Model, tea.Cmd) {
 	// Update last activity time on any key press
 	m.lastActivity = time.Now()
-
-	if msg == "escape" || msg == "h" {
+	// fmt.Println(msg)
+	m.setStatusMessage(msg)
+	if msg == "esc" || msg == "h" || msg == "enter" {
 		gm.toggleHelp()
 	}
 
 	return m, nil
+}
+
+func (gm GameHelpMode) getControls() string {
+	return " | Enter/Esc/H: exit help, Q: quit"
 }

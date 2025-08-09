@@ -353,11 +353,8 @@ func (m TUIModel) View() string {
 	// Bottom bar with time and controls
 	timeStr := time.Now().Format("15:04:05")
 	timeoutRemaining := m.timeoutDuration - time.Since(m.lastActivity)
-	// if timeoutRemaining < 0 {
-	// 	timeoutRemaining = 0
-	// }
 	timeoutStr := fmt.Sprintf("%.0fs", timeoutRemaining.Seconds())
-	controls := "⏰ " + timeStr + " | Timeout: " + timeoutStr + " | 1-7: select cards, Enter/P: play, D: discard, C: clear, R: resort, H: help, Q: quit"
+	controls := "⏰ " + timeStr + " | Timeout: " + timeoutStr + m.mode.getControls()
 	bottomBar := bottomBarStyle.
 		Width(m.width).
 		Render(controls)
@@ -398,6 +395,7 @@ type Mode interface {
 	renderContent(m TUIModel) string
 	toggleHelp() Mode
 	handleKeyPress(m *TUIModel, msg string) (tea.Model, tea.Cmd)
+	getControls() string
 }
 
 // getStatusMessage returns the current status message or default message
