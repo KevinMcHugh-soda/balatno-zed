@@ -14,20 +14,54 @@ The game features a complete **money and shop system** - earn money by completin
 # Build the game
 go build -o balatro .
 
-# Run the game
+# Run the game (console mode)
 ./balatro
+
+# Run in TUI mode (graphical terminal interface)
+./balatro -tui
 ```
 
 Or run directly with Go:
 ```bash
+# Console mode
 go run .
+
+# TUI mode
+go run . -tui
 ```
 
 For reproducible gameplay:
 ```bash
 # Use a specific seed
 go run . -seed 42
+
+# TUI mode with seed
+go run . -tui -seed 42
 ```
+
+### TUI Mode Timeout
+
+When running in TUI mode (`-tui` flag), the game will automatically timeout and shut down gracefully after a period of inactivity to prevent it from running indefinitely.
+
+**Configuration:**
+- **Default timeout**: 60 seconds
+- **Environment variable**: `BALATRO_TIMEOUT` (in seconds)
+- **Timeout display**: Shows remaining time in bottom bar
+- **Graceful shutdown**: 2-second delay with timeout message
+
+**Examples:**
+```bash
+# Use default 60 second timeout
+./balatro -tui
+
+# Set custom 30 second timeout
+BALATRO_TIMEOUT=30 ./balatro -tui
+
+# Set 5 minute timeout
+BALATRO_TIMEOUT=300 ./balatro -tui
+```
+
+**Activity tracking**: The timeout resets on any user input (keypresses) or game actions (playing cards, discarding, shopping, etc.). Invalid or zero timeout values fall back to the 60-second default.
 
 ## How to Play
 

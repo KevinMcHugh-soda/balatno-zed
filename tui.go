@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -40,6 +42,10 @@ type TUIModel struct {
 	selectedCards     []int // indices of selected cards (0-based)
 	statusMessage     string
 	statusMessageTime time.Time
+
+	// Timeout configuration
+	timeoutDuration time.Duration
+	lastActivity    time.Time
 
 	// Game state (updated by messages)
 	gameState  GameStateChangedEvent
@@ -99,8 +105,26 @@ var (
 			Margin(0, 1)
 )
 
+// getTimeoutDuration reads the BALATRO_TIMEOUT environment variable or returns default 60s
+func getTimeoutDuration() time.Duration {
+	timeoutStr := os.Getenv("BALATRO_TIMEOUT")
+	if timeoutStr == "" {
+		return 60 * time.Second // Default 60 seconds
+	}
+
+	timeoutSecs, err := strconv.Atoi(timeoutStr)
+	if err != nil || timeoutSecs <= 0 {
+		fmt.Printf("Warning: Invalid BALATRO_TIMEOUT value '%s', using default 60s\n", timeoutStr)
+		return 60 * time.Second
+	}
+
+	return time.Duration(timeoutSecs) * time.Second
+}
+
 // Init returns the initial command
 func (m TUIModel) Init() tea.Cmd {
+	m.timeoutDuration = getTimeoutDuration()
+	m.lastActivity = time.Now()
 	return tea.Batch(
 		tea.EnterAltScreen,
 		tickCmd(),
@@ -127,6 +151,33 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tickMsg:
 		m.currentTime = time.Time(msg)
+
+		// Check for timeout
+		if time.Since(m.lastActivity) > m.timeoutDuration {
+			m.setStatusMessage("⏰ Timeout reached - shutting down gracefully")
+
+			// Handle pending action request if any
+			if m.actionRequestPending != nil {
+				// Capture response channel before clearing the pending request
+				responseChan := m.actionRequestPending.ResponseChan
+				m.actionRequestPending = nil
+
+				// Send quit response
+				go func() {
+					responseChan <- PlayerActionResponse{
+						Action: PlayerActionNone,
+						Params: nil,
+						Quit:   true,
+					}
+				}()
+			}
+
+			return m, tea.Sequence(
+				tea.Tick(2*time.Second, func(t time.Time) tea.Msg { return tea.Quit() }),
+				tickCmd(),
+			)
+		}
+
 		return m, tickCmd()
 	}
 
@@ -151,6 +202,7 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case handPlayedMsg:
+		m.lastActivity = time.Now() // User played cards
 		event := HandPlayedEvent(msg)
 		var message string
 		scoreGained := event.FinalScore
@@ -171,6 +223,7 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case cardsDiscardedMsg:
+		m.lastActivity = time.Now() // User discarded cards
 		event := CardsDiscardedEvent(msg)
 		var cardNames []string
 		for _, card := range event.DiscardedCards {
@@ -192,6 +245,7 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case cardsResortedMsg:
+		m.lastActivity = time.Now() // User resorted cards
 		event := CardsResortedEvent(msg)
 		m.setStatusMessage(fmt.Sprintf("🔄 Cards now sorted by %s", event.NewSortMode))
 		return m, nil
@@ -238,11 +292,13 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case shopItemPurchasedMsg:
+		m.lastActivity = time.Now() // User purchased item
 		event := ShopItemPurchasedEvent(msg)
 		m.setStatusMessage(fmt.Sprintf("✨ Purchased %s! Remaining: $%d", event.Item.Name, event.RemainingMoney))
 		return m, nil
 
 	case shopRerolledMsg:
+		m.lastActivity = time.Now() // User rerolled shop
 		event := ShopRerolledEvent(msg)
 		m.setStatusMessage(fmt.Sprintf("💫 Shop rerolled for $%d! Next reroll: $%d", event.Cost, event.NewRerollCost))
 		return m, nil
@@ -294,6 +350,9 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // handleKeyPress processes keyboard input
 func (m TUIModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// Update last activity time on any key press
+	m.lastActivity = time.Now()
+
 	// Some keypresses should be handled the same way every time.
 	switch msg.String() {
 	case "ctrl+c", "q":
@@ -331,7 +390,7 @@ func (m TUIModel) View() string {
 	// Top bar
 	topBar := topBarStyle.
 		Width(m.width).
-		Render(fmt.Sprintf("🃏 Welcome to Balatno"))
+		Render("🃏 Welcome to Balatno")
 
 	// Status bar (second from bottom)
 	statusBar := bottomBarStyle.
@@ -340,7 +399,12 @@ func (m TUIModel) View() string {
 
 	// Bottom bar with time and controls
 	timeStr := m.currentTime.Format("15:04:05")
-	controls := "⏰ " + timeStr + " | 1-7: select cards, Enter/P: play, D: discard, C: clear, R: resort, H: help, Q: quit"
+	timeoutRemaining := m.timeoutDuration - time.Since(m.lastActivity)
+	if timeoutRemaining < 0 {
+		timeoutRemaining = 0
+	}
+	timeoutStr := fmt.Sprintf("%.0fs", timeoutRemaining.Seconds())
+	controls := "⏰ " + timeStr + " | Timeout: " + timeoutStr + " | 1-7: select cards, Enter/P: play, D: discard, C: clear, R: resort, H: help, Q: quit"
 	bottomBar := bottomBarStyle.
 		Width(m.width).
 		Render(controls)

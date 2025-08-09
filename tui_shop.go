@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -45,6 +46,9 @@ func (ms ShoppingMode) renderContent(m TUIModel) string {
 }
 
 func (gm ShoppingMode) handleKeyPress(m *TUIModel, msg string) (tea.Model, tea.Cmd) {
+	// Update last activity time on any key press
+	m.lastActivity = time.Now()
+
 	switch msg {
 	case "1", "2", "3", "4", "5", "6", "7":
 		// select a shop item
@@ -119,6 +123,9 @@ func (gm ShopHelpMode) toggleHelp() Mode {
 }
 
 func (gm ShopHelpMode) handleKeyPress(m *TUIModel, msg string) (tea.Model, tea.Cmd) {
+	// Update last activity time on any key press
+	m.lastActivity = time.Now()
+
 	if msg == "escape" || msg == "h" {
 		gm.toggleHelp()
 	}

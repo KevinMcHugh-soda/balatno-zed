@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -124,6 +125,9 @@ func renderHand(m TUIModel) string {
 }
 
 func (gm GameMode) handleKeyPress(m *TUIModel, msg string) (tea.Model, tea.Cmd) {
+	// Update last activity time on any key press
+	m.lastActivity = time.Now()
+
 	switch msg {
 	// there's a bug when you discard and then attempt to play, it won't submit.
 	case "1", "2", "3", "4", "5", "6", "7":
@@ -230,6 +234,9 @@ func (gm GameHelpMode) toggleHelp() Mode {
 }
 
 func (gm GameHelpMode) handleKeyPress(m *TUIModel, msg string) (tea.Model, tea.Cmd) {
+	// Update last activity time on any key press
+	m.lastActivity = time.Now()
+
 	if msg == "escape" || msg == "h" {
 		gm.toggleHelp()
 	}
