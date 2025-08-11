@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
@@ -44,6 +45,7 @@ type TUIModel struct {
 	selectedCards     []int // indices of selected cards (0-based)
 	statusMessage     string
 	statusMessageTime time.Time
+	eventLog          []string
 
 	// Timeout configuration
 	timeoutDuration time.Duration
@@ -60,6 +62,8 @@ type TUIModel struct {
 	// Communication with game
 	actionRequestPending *PlayerActionRequest
 	program              *tea.Program
+
+	viewport viewport.Model
 }
 
 // getTimeoutDuration reads the BALATRO_TIMEOUT environment variable or returns default 60s
@@ -99,6 +103,7 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+		m.viewport = viewport.New(30, m.height)
 		return m, nil
 
 	case tea.KeyMsg:
@@ -139,12 +144,16 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	// Game event messages
 	case gameStartedMsg:
-		m.setStatusMessage("🎮 Game started! Select cards with 1-7, play with Enter/P, discard with D")
+		msgStr := "🎮 Game started! Select cards with 1-7, play with Enter/P, discard with D"
+		m.setStatusMessage(msgStr)
+		m.logEvent("Game started")
 		m.mode = GameMode{}
 		return m, nil
 
 	case gameStateChangedMsg:
-		m.gameState = game.GameStateChangedEvent(msg)
+		event := game.GameStateChangedEvent(msg)
+		m.gameState = event
+		m.logEvent(fmt.Sprintf("Game state: score %d/%d, hands %d, discards %d", event.Score, event.Target, event.Hands, event.Discards))
 		return m, nil
 
 	case cardsDealtMsg:
@@ -154,6 +163,7 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.displayMap = make([]int, len(event.DisplayMapping))
 		copy(m.displayMap, event.DisplayMapping)
 		m.sortMode = event.SortMode
+		m.logEvent(fmt.Sprintf("Dealt %d cards (sorted by %s)", len(event.Cards), event.SortMode))
 		return m, nil
 
 	case handPlayedMsg:
@@ -175,6 +185,7 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 		m.setStatusMessage(message)
+		m.logEvent(message)
 		return m, nil
 
 	case cardsDiscardedMsg:
@@ -197,12 +208,15 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			message = fmt.Sprintf("🗑️ Discarded %s, dealt new cards | No more discards available!", discardedStr)
 		}
 		m.setStatusMessage(message)
+		m.logEvent(message)
 		return m, nil
 
 	case cardsResortedMsg:
 		m.lastActivity = time.Now() // User resorted cards
 		event := game.CardsResortedEvent(msg)
-		m.setStatusMessage(fmt.Sprintf("🔄 Cards now sorted by %s", event.NewSortMode))
+		msgStr := fmt.Sprintf("🔄 Cards now sorted by %s", event.NewSortMode)
+		m.setStatusMessage(msgStr)
+		m.logEvent(msgStr)
 		return m, nil
 
 	case blindDefeatedMsg:
@@ -221,11 +235,14 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			message = "💀 BOSS BLIND ANNIHILATED! 💀"
 		}
 		m.setStatusMessage(message)
+		m.logEvent(message)
 		return m, nil
 
 	case anteCompletedMsg:
 		event := game.AnteCompletedEvent(msg)
-		m.setStatusMessage(fmt.Sprintf("🎊 ANTE %d COMPLETE! Starting Ante %d", event.CompletedAnte, event.NewAnte))
+		msgStr := fmt.Sprintf("🎊 ANTE %d COMPLETE! Starting Ante %d", event.CompletedAnte, event.NewAnte)
+		m.setStatusMessage(msgStr)
+		m.logEvent(msgStr)
 		return m, nil
 
 	case newBlindStartedMsg:
@@ -239,7 +256,9 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case game.BossBlind:
 			blindEmoji = "💀"
 		}
-		m.setStatusMessage(fmt.Sprintf("%s NOW ENTERING: %s (Ante %d) | Target: %d points", blindEmoji, event.Blind, event.Ante, event.Target))
+		msgStr := fmt.Sprintf("%s NOW ENTERING: %s (Ante %d) | Target: %d points", blindEmoji, event.Blind, event.Ante, event.Target)
+		m.setStatusMessage(msgStr)
+		m.logEvent(msgStr)
 		return m, nil
 
 	case shopOpenedMsg:
@@ -249,6 +268,7 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.gameState.Money = event.Money
 		m.mode = ShoppingMode{}
 		m.setStatusMessage("🛍️ Welcome to the Shop!")
+		m.logEvent("Entered shop")
 		return m, nil
 
 	case shopItemPurchasedMsg:
@@ -259,7 +279,9 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.shopInfo != nil {
 			m.shopInfo.Money = event.RemainingMoney
 		}
-		m.setStatusMessage(fmt.Sprintf("✨ Purchased %s! Remaining: $%d", event.Item.Name, event.RemainingMoney))
+		msgStr := fmt.Sprintf("✨ Purchased %s! Remaining: $%d", event.Item.Name, event.RemainingMoney)
+		m.setStatusMessage(msgStr)
+		m.logEvent(msgStr)
 		return m, nil
 
 	case shopRerolledMsg:
@@ -270,48 +292,61 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.shopInfo.Money = event.RemainingMoney
 		m.shopInfo.RerollCost = event.NewRerollCost
 		m.shopInfo.Items = event.NewItems
-		m.setStatusMessage(fmt.Sprintf("💫 Shop rerolled for $%d! Next reroll: $%d", event.Cost, event.NewRerollCost))
+		msgStr := fmt.Sprintf("💫 Shop rerolled for $%d! Next reroll: $%d", event.Cost, event.NewRerollCost)
+		m.setStatusMessage(msgStr)
+		m.logEvent(msgStr)
 		return m, nil
 
 	case shopClosedMsg:
 		m.shopInfo = nil
 		m.setStatusMessage("👋 Left the shop")
+		m.logEvent("Left shop")
 		m.mode = GameMode{}
 		return m, nil
 
 	case invalidActionMsg:
 		event := game.InvalidActionEvent(msg)
-		m.setStatusMessage(fmt.Sprintf("❌ %s", event.Reason))
+		msgStr := fmt.Sprintf("❌ %s", event.Reason)
+		m.setStatusMessage(msgStr)
+		m.logEvent(msgStr)
 		return m, nil
 
 	case messageEventMsg:
 		event := game.MessageEvent(msg)
+		var msgStr string
 		switch event.Type {
 		case "error":
-			m.setStatusMessage(fmt.Sprintf("❌ %s", event.Message))
+			msgStr = fmt.Sprintf("❌ %s", event.Message)
 		case "warning":
-			m.setStatusMessage(fmt.Sprintf("⚠️ %s", event.Message))
+			msgStr = fmt.Sprintf("⚠️ %s", event.Message)
 		case "success":
-			m.setStatusMessage(fmt.Sprintf("✅ %s", event.Message))
+			msgStr = fmt.Sprintf("✅ %s", event.Message)
 		case "info":
-			m.setStatusMessage(fmt.Sprintf("ℹ️ %s", event.Message))
+			msgStr = fmt.Sprintf("ℹ️ %s", event.Message)
 		default:
-			m.setStatusMessage(event.Message)
+			msgStr = event.Message
 		}
+		m.setStatusMessage(msgStr)
+		m.logEvent(msgStr)
 		return m, nil
 
 	case gameOverMsg:
 		event := game.GameOverEvent(msg)
-		m.setStatusMessage(fmt.Sprintf("💀 GAME OVER! Final: %d/%d (Ante %d)", event.FinalScore, event.Target, event.Ante))
+		msgStr := fmt.Sprintf("💀 GAME OVER! Final: %d/%d (Ante %d)", event.FinalScore, event.Target, event.Ante)
+		m.setStatusMessage(msgStr)
+		m.logEvent(msgStr)
 		return m, nil
 
 	case victoryMsg:
-		m.setStatusMessage("🏆 VICTORY! You conquered all 8 Antes! 🎉")
+		msgStr := "🏆 VICTORY! You conquered all 8 Antes! 🎉"
+		m.setStatusMessage(msgStr)
+		m.logEvent("Victory achieved")
 		return m, nil
 
 	case playerActionRequestMsg:
 		request := PlayerActionRequest(msg)
 		m.actionRequestPending = &request
+		m.logEvent(fmt.Sprintf("Awaiting player action (discard allowed: %t)", request.CanDiscard))
 		return m, nil
 	}
 
@@ -358,13 +393,23 @@ func (m TUIModel) View() string {
 	}
 
 	// Top bar
+	topFrame, _ := topBarStyle.GetFrameSize()
+	topWidth := m.width - topFrame
+	if topWidth < 0 {
+		topWidth = 0
+	}
 	topBar := topBarStyle.
-		Width(m.width).
+		Width(topWidth).
 		Render("🃏 Welcome to Balatno")
 
 	// Status bar (second from bottom)
+	barFrame, _ := bottomBarStyle.GetFrameSize()
+	barWidth := m.width - barFrame
+	if barWidth < 0 {
+		barWidth = 0
+	}
 	statusBar := bottomBarStyle.
-		Width(m.width).
+		Width(barWidth).
 		Render(m.getStatusMessage())
 
 	// Bottom bar with time and controls
@@ -373,29 +418,48 @@ func (m TUIModel) View() string {
 	timeoutStr := fmt.Sprintf("%.0fs", timeoutRemaining.Seconds())
 	controls := "⏰ " + timeStr + " | Timeout: " + timeoutStr + m.mode.getControls()
 	bottomBar := bottomBarStyle.
-		Width(m.width).
+		Width(barWidth).
 		Render(controls)
 
 	// Main content area - fixed height
 	contentHeight := m.height - 3 // Account for top, status, and bottom bars
 
 	var content string
-	// if m.showHelp {
-	// 	m.mode = m.mode.toggleHelp()
-	// }
 
 	content = m.mode.renderContent(m)
 
+	logWidth := 30
+	// logFrame, _ := eventLogStyle.GetFrameSize()
+	// logContentWidth := logWidth - logFrame
+	// if logContentWidth < 0 {
+	// 	logContentWidth = 0
+	// }
+
+	contentAreaWidth := m.width - logWidth
+	mainFrame, _ := mainContentStyle.GetFrameSize()
+	contentWidth := contentAreaWidth - mainFrame
+	if contentWidth < 0 {
+		contentWidth = 0
+	}
+
 	renderedContent := mainContentStyle.
-		Width(m.width).
+		Width(contentWidth).
 		Height(contentHeight).
 		Render(content)
+
+	m.viewport.SetContent(m.renderEventLog(contentHeight, logWidth))
+	// logView := eventLogStyle.
+	// 	Width(logContentWidth).
+	// 	Height(contentHeight).
+	// 	Render(m.renderEventLog(contentHeight, logContentWidth))
+
+	mainArea := lipgloss.JoinHorizontal(lipgloss.Top, renderedContent, m.viewport.View())
 
 	// Combine all parts with fixed layout
 	return lipgloss.JoinVertical(
 		lipgloss.Left,
 		topBar,
-		renderedContent,
+		mainArea,
 		statusBar,
 		bottomBar,
 	)
@@ -427,6 +491,31 @@ func (m TUIModel) getStatusMessage() string {
 func (m *TUIModel) setStatusMessage(msg string) {
 	m.statusMessage = msg
 	m.statusMessageTime = time.Now()
+}
+
+// logEvent appends a message to the event log
+func (m *TUIModel) logEvent(msg string) {
+	m.eventLog = append(m.eventLog, msg)
+}
+
+// renderEventLog returns the log contents trimmed to fit the given height
+func (m TUIModel) renderEventLog(height, width int) string {
+	if len(m.eventLog) == 0 {
+		return ""
+	}
+	start := 0
+	if len(m.eventLog) > height {
+		start = len(m.eventLog) - height
+	}
+	truncatedStrs := make([]string, height)
+	for _, str := range m.eventLog[start:] {
+		if len(str) > width {
+			truncatedStrs = append(truncatedStrs, str[:width-3]+"...")
+		} else {
+			truncatedStrs = append(truncatedStrs, str)
+		}
+	}
+	return strings.Join(m.eventLog[start:], "\n")
 }
 
 // isCardSelected checks if a card at the given index is selected
@@ -570,6 +659,7 @@ func RunTUI() error {
 		lastActivity:    time.Now(),
 		currentTime:     time.Now(),
 		selectedCards:   []int{},
+		eventLog:        []string{},
 	}
 	// model.Init()
 

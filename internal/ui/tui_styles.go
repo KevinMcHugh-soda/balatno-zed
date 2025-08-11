@@ -30,6 +30,11 @@ var (
 			Padding(1).
 			Margin(1, 1)
 
+	eventLogStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("240")).
+			Padding(0, 1)
+
 	heartsCardStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("196")).
 			Margin(0, 1)
