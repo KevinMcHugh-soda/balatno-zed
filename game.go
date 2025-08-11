@@ -530,7 +530,7 @@ func (g *Game) showShop() {
 			if g.money >= g.rerollCost {
 				oldCost := g.rerollCost
 				g.money -= g.rerollCost
-				g.rerollCost++
+				g.rerollCost += 2
 
 				// Generate new shop items
 				if len(availableJokers) >= 2 {
@@ -658,7 +658,7 @@ func (g *Game) showShopWithItems(availableJokers []Joker, shopItems []Joker) {
 			if g.money >= g.rerollCost {
 				oldCost := g.rerollCost
 				g.money -= g.rerollCost
-				g.rerollCost++
+				g.rerollCost += 2
 
 				// Generate new shop items
 				if len(availableJokers) >= 2 {
