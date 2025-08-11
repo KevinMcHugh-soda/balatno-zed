@@ -757,15 +757,25 @@ func (g *Game) showShopWithItems(availableJokers []Joker, shopItems []Joker) {
 	}
 }
 
-// RemoveCards removes cards at specified indices and returns the new slice
+// removeCards removes cards at specified indices and returns the new slice
 func RemoveCards(cards []Card, indices []int) []Card {
-	// Sort indices in descending order to remove from end first
-	sort.Sort(sort.Reverse(sort.IntSlice(indices)))
+	// Use a set to ensure each index is only removed once
+	uniqueSet := make(map[int]struct{})
+	for _, idx := range indices {
+		uniqueSet[idx] = struct{}{}
+	}
+
+	// Collect unique indices and sort in descending order to remove from end first
+	uniqueIndices := make([]int, 0, len(uniqueSet))
+	for idx := range uniqueSet {
+		uniqueIndices = append(uniqueIndices, idx)
+	}
+	sort.Sort(sort.Reverse(sort.IntSlice(uniqueIndices)))
 
 	result := make([]Card, len(cards))
 	copy(result, cards)
 
-	for _, index := range indices {
+	for _, index := range uniqueIndices {
 		if index >= 0 && index < len(result) {
 			result = append(result[:index], result[index+1:]...)
 		}
