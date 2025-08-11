@@ -1,9 +1,10 @@
-package main
+package game
 
 import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 
 	"gopkg.in/yaml.v2"
 )
@@ -76,7 +77,7 @@ func LoadJokerConfigs() error {
 
 // loadJokersFromYAML loads joker configurations from YAML file
 func loadJokersFromYAML() error {
-	file, err := os.Open("jokers.yaml")
+	file, err := os.Open(filepath.Join("internal", "game", "jokers.yaml"))
 	if err != nil {
 		return err
 	}

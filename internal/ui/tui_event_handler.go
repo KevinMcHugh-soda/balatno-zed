@@ -1,7 +1,9 @@
-package main
+package ui
 
 import (
 	"time"
+
+	game "balatno/internal/game"
 )
 
 // TUIEventHandler handles events for TUI mode and sends messages to bubbletea
@@ -22,7 +24,7 @@ type PlayerActionRequest struct {
 
 // PlayerActionResponse represents the player's response
 type PlayerActionResponse struct {
-	Action PlayerAction
+	Action game.PlayerAction
 	Params []string
 	Quit   bool
 }
@@ -41,67 +43,67 @@ func (h *TUIEventHandler) SetTUIModel(model *TUIModel) {
 }
 
 // HandleEvent processes game events and sends them as bubbletea messages
-func (h *TUIEventHandler) HandleEvent(event Event) {
+func (h *TUIEventHandler) HandleEvent(event game.Event) {
 	if h.tuiModel == nil {
 		return
 	}
 
 	switch e := event.(type) {
-	case GameStartedEvent:
+	case game.GameStartedEvent:
 		h.tuiModel.SendMessage(gameStartedMsg{})
 
-	case GameStateChangedEvent:
+	case game.GameStateChangedEvent:
 		h.tuiModel.SendMessage(gameStateChangedMsg(e))
 
-	case CardsDealtEvent:
+	case game.CardsDealtEvent:
 		h.tuiModel.SendMessage(cardsDealtMsg(e))
 
-	case HandPlayedEvent:
+	case game.HandPlayedEvent:
 		h.tuiModel.SendMessage(handPlayedMsg(e))
 
-	case CardsDiscardedEvent:
+	case game.CardsDiscardedEvent:
 		h.tuiModel.SendMessage(cardsDiscardedMsg(e))
 
-	case CardsResortedEvent:
+	case game.CardsResortedEvent:
 		h.tuiModel.SendMessage(cardsResortedMsg(e))
 
-	case BlindDefeatedEvent:
+	case game.BlindDefeatedEvent:
 		h.tuiModel.SendMessage(blindDefeatedMsg(e))
 
-	case AnteCompletedEvent:
+	case game.AnteCompletedEvent:
 		h.tuiModel.SendMessage(anteCompletedMsg(e))
 
-	case NewBlindStartedEvent:
+	case game.NewBlindStartedEvent:
 		h.tuiModel.SendMessage(newBlindStartedMsg(e))
 
-	case ShopOpenedEvent:
+	case game.ShopOpenedEvent:
 		h.tuiModel.SendMessage(shopOpenedMsg(e))
 
-	case ShopItemPurchasedEvent:
+	case game.ShopItemPurchasedEvent:
 		h.tuiModel.SendMessage(shopItemPurchasedMsg(e))
 
-	case ShopRerolledEvent:
+	case game.ShopRerolledEvent:
 		h.tuiModel.SendMessage(shopRerolledMsg(e))
 
-	case ShopClosedEvent:
+	case game.ShopClosedEvent:
 		h.tuiModel.SendMessage(shopClosedMsg{})
 
-	case InvalidActionEvent:
+	case game.InvalidActionEvent:
 		h.tuiModel.SendMessage(invalidActionMsg(e))
 
-	case MessageEvent:
+	case game.MessageEvent:
 		h.tuiModel.SendMessage(messageEventMsg(e))
 
-	case GameOverEvent:
+	case game.GameOverEvent:
 		h.tuiModel.SendMessage(gameOverMsg(e))
 
-	case VictoryEvent:
+	case game.VictoryEvent:
 		h.tuiModel.SendMessage(victoryMsg{})
 	}
 }
 
 // GetPlayerAction waits for player input from the TUI
-func (h *TUIEventHandler) GetPlayerAction(canDiscard bool) (PlayerAction, []string, bool) {
+func (h *TUIEventHandler) GetPlayerAction(canDiscard bool) (game.PlayerAction, []string, bool) {
 	responseChan := make(chan PlayerActionResponse)
 	request := PlayerActionRequest{
 		CanDiscard:   canDiscard,
@@ -119,17 +121,17 @@ func (h *TUIEventHandler) GetPlayerAction(canDiscard bool) (PlayerAction, []stri
 		return response.Action, response.Params, response.Quit
 	case <-time.After(30 * time.Second):
 		// Return empty action to keep game loop responsive
-		return PlayerActionNone, nil, false
+		return game.PlayerActionNone, nil, false
 	}
 }
 
 // GetShopAction waits for shop action from the TUI
-func (h *TUIEventHandler) GetShopAction() (PlayerAction, []string, bool) {
+func (h *TUIEventHandler) GetShopAction() (game.PlayerAction, []string, bool) {
 	// Basically everything is the same, except that an "r" means reroll, not resort.
 	action, params, quit := h.GetPlayerAction(false)
 	// we should be able to eliminate this soon, given the move to modes
-	if action == PlayerActionResort {
-		action = PlayerActionReroll
+	if action == game.PlayerActionResort {
+		action = game.PlayerActionReroll
 	}
 	return action, params, quit
 }

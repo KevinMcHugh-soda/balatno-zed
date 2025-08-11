@@ -3,6 +3,9 @@ package main
 import (
 	"flag"
 	"fmt"
+
+	game "balatno/internal/game"
+	ui "balatno/internal/ui"
 )
 
 func main() {
@@ -13,21 +16,21 @@ func main() {
 
 	// Set seed if provided
 	if *seed != 0 {
-		SetSeed(*seed)
+		game.SetSeed(*seed)
 		fmt.Printf("Using seed: %d\n", *seed)
 	}
 
 	// Run in TUI mode or console mode
 	if *tui {
-		if err := RunTUI(); err != nil {
+		if err := ui.RunTUI(); err != nil {
 			fmt.Printf("Error running TUI: %v\n", err)
 		}
 	} else {
 		// Create event handler for console mode
-		eventHandler := NewLoggerEventHandler()
+		eventHandler := game.NewLoggerEventHandler()
 
 		// Create and run the game
-		game := NewGame(eventHandler)
-		game.Run()
+		g := game.NewGame(eventHandler)
+		g.Run()
 	}
 }
