@@ -3,6 +3,7 @@ package game
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 )
@@ -12,11 +13,16 @@ type LoggerEventHandler struct {
 	scanner *bufio.Scanner
 }
 
-// NewLoggerEventHandler creates a new LoggerEventHandler
+// NewLoggerEventHandler creates a new LoggerEventHandler using stdin for input
 func NewLoggerEventHandler() *LoggerEventHandler {
-	return &LoggerEventHandler{
-		scanner: bufio.NewScanner(os.Stdin),
-	}
+	return NewLoggerEventHandlerFromReader(os.Stdin)
+}
+
+// NewLoggerEventHandlerFromReader creates a new LoggerEventHandler that reads
+// input from the provided reader. Useful for tests where a custom input source
+// is needed.
+func NewLoggerEventHandlerFromReader(r io.Reader) *LoggerEventHandler {
+	return &LoggerEventHandler{scanner: bufio.NewScanner(r)}
 }
 
 // HandleEvent processes game events and presents them to the console

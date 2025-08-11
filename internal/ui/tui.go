@@ -389,13 +389,23 @@ func (m TUIModel) View() string {
 	}
 
 	// Top bar
+	topFrame, _ := topBarStyle.GetFrameSize()
+	topWidth := m.width - topFrame
+	if topWidth < 0 {
+		topWidth = 0
+	}
 	topBar := topBarStyle.
-		Width(m.width).
+		Width(topWidth).
 		Render("🃏 Welcome to Balatno")
 
 	// Status bar (second from bottom)
+	barFrame, _ := bottomBarStyle.GetFrameSize()
+	barWidth := m.width - barFrame
+	if barWidth < 0 {
+		barWidth = 0
+	}
 	statusBar := bottomBarStyle.
-		Width(m.width).
+		Width(barWidth).
 		Render(m.getStatusMessage())
 
 	// Bottom bar with time and controls
@@ -404,7 +414,7 @@ func (m TUIModel) View() string {
 	timeoutStr := fmt.Sprintf("%.0fs", timeoutRemaining.Seconds())
 	controls := "⏰ " + timeStr + " | Timeout: " + timeoutStr + m.mode.getControls()
 	bottomBar := bottomBarStyle.
-		Width(m.width).
+		Width(barWidth).
 		Render(controls)
 
 	// Main content area - fixed height

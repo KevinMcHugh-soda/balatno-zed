@@ -22,7 +22,7 @@ func newHandlerWithInput(input string) *game.LoggerEventHandler {
 }
 
 func TestGetShopActionParsesBuyWithQuantity(t *testing.T) {
-	handler := newHandlerWithInput("buy 12\n")
+	handler := game.NewLoggerEventHandlerFromReader(strings.NewReader("buy 12\n"))
 	action, params, quit := handler.GetShopAction()
 	if quit {
 		t.Fatalf("expected quit to be false, got true")
@@ -36,7 +36,7 @@ func TestGetShopActionParsesBuyWithQuantity(t *testing.T) {
 }
 
 func TestGetShopActionParsesReroll(t *testing.T) {
-	handler := newHandlerWithInput("reroll\n")
+	handler := game.NewLoggerEventHandlerFromReader(strings.NewReader("reroll\n"))
 	action, params, quit := handler.GetShopAction()
 	if quit {
 		t.Fatalf("expected quit to be false, got true")
