@@ -60,7 +60,7 @@ func TestShoppingModeActions(t *testing.T) {
 	m := TUIModel{
 		gameState:            game.GameStateChangedEvent{Money: 10},
 		shopInfo:             &game.ShopOpenedEvent{Money: 10, RerollCost: 5, Items: []game.ShopItemData{{Name: "J1", Cost: 5, Description: "", CanAfford: true}}},
-		mode:                 ShoppingMode{selectedItem: &selected},
+		mode:                 &ShoppingMode{selectedItem: &selected},
 		actionRequestPending: &PlayerActionRequest{ResponseChan: respChan},
 	}
 
@@ -76,7 +76,7 @@ func TestShoppingModeActions(t *testing.T) {
 	mPtr := model.(*TUIModel)
 	m = *mPtr
 	m.actionRequestPending = &PlayerActionRequest{ResponseChan: respChan}
-	m.mode = ShoppingMode{}
+	m.mode = &ShoppingMode{}
 	model, _ = m.handleKeyPress(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'r'}})
 	resp = <-respChan
 	if resp.Action != game.PlayerActionReroll {

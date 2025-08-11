@@ -51,7 +51,7 @@ func (ms ShoppingMode) renderContent(m TUIModel) string {
 	)
 }
 
-func (gm ShoppingMode) handleKeyPress(m *TUIModel, msg string) (tea.Model, tea.Cmd) {
+func (gm *ShoppingMode) handleKeyPress(m *TUIModel, msg string) (tea.Model, tea.Cmd) {
 	// Update last activity time on any key press
 	m.lastActivity = time.Now()
 
