@@ -32,7 +32,7 @@ func (ms *ShoppingMode) renderContent(m *TUIModel) string {
 		posNumStyle := lipgloss.NewStyle().
 			Foreground(lipgloss.Color("244"))
 
-		if m.isCardSelected(idx) {
+		if ms.selectedItem != nil && *ms.selectedItem == idx+1 {
 			posNumStyle = posNumStyle.Foreground(lipgloss.Color("226")).Bold(true)
 		}
 
@@ -69,9 +69,9 @@ func (gm *ShoppingMode) handleKeyPress(m *TUIModel, msg string) (tea.Model, tea.
 		return m, nil
 
 	case "enter":
-		// Exit the shop
 		if gm.selectedItem != nil {
-			item := m.shopInfo.Items[*gm.selectedItem]
+			idx := *gm.selectedItem - 1
+			item := m.shopInfo.Items[idx]
 			if !item.CanAfford {
 				m.setStatusMessage("Not enough money!")
 				return m, nil
@@ -88,19 +88,12 @@ func (gm *ShoppingMode) handleKeyPress(m *TUIModel, msg string) (tea.Model, tea.
 						Quit:   false,
 					}
 				}()
-
-				m.setStatusMessage("🚪 Exiting shop...")
 			}
-			// m.cards = append(m.cards, item)
+
 			m.setStatusMessage(fmt.Sprintf("🛒 Purchased %s!", item.Name))
+			gm.selectedItem = nil
 			return m, nil
 		}
-
-		// if gm.consecutiveEnters == 0 {
-		// 	gm.consecutiveEnters++
-		// 	m.setStatusMessage("Press 'Enter' again to exit shop")
-		// 	return m, nil
-		// }
 
 		if m.actionRequestPending != nil {
 			// Capture response channel before clearing the pending request
@@ -119,7 +112,6 @@ func (gm *ShoppingMode) handleKeyPress(m *TUIModel, msg string) (tea.Model, tea.
 			m.setStatusMessage("🚪 Exiting shop...")
 		}
 		return m, nil
-
 	case "r":
 		// Reroll shop items
 		if m.actionRequestPending != nil {
