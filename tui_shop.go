@@ -177,9 +177,9 @@ func (gm ShopHelpMode) handleKeyPress(m *TUIModel, msg string) (tea.Model, tea.C
 	m.lastActivity = time.Now()
 	// fmt.Println(msg)
 	m.setStatusMessage(msg)
-	if msg == "esc" || msg == "h" || msg == "enter" {
+	if msg == "esc" || msg == "escape" || msg == "enter" {
 		m.showHelp = !m.showHelp
-		gm.toggleHelp()
+		m.mode = gm.toggleHelp()
 	}
 
 	return m, nil
