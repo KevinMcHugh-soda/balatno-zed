@@ -743,7 +743,7 @@ func (g *Game) showShopWithItems(availableJokers []Joker, shopItems []Joker) {
 		} else {
 			g.eventEmitter.EmitEvent(InvalidActionEvent{
 				Action: "unknown",
-				Reason: fmt.Sprintf("Invalid action (given '%d'). Use 'buy <number>', 'reroll', or 'exit'.", action),
+				Reason: fmt.Sprintf("Invalid action (given '%s'). Use 'buy <number>', 'reroll', or 'exit'.", action),
 			})
 		}
 	}
