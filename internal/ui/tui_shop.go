@@ -16,7 +16,7 @@ type ShoppingMode struct {
 	consecutiveEnters int
 }
 
-func (ms ShoppingMode) renderContent(m TUIModel) string {
+func (ms *ShoppingMode) renderContent(m *TUIModel) string {
 	gameInfo := fmt.Sprintf("%s Ante %d - %s✅\n", "🏪", m.gameState.Ante, m.gameState.Blind) +
 		fmt.Sprintf("🎴 Hands: %d | 🗑️ Discards: %d | 💰 Money: $%d | 🎲 Reroll: $%d",
 			m.gameState.Hands, m.gameState.Discards, m.gameState.Money, m.shopInfo.RerollCost)
@@ -27,7 +27,7 @@ func (ms ShoppingMode) renderContent(m TUIModel) string {
 	var jokerViews []string
 
 	for idx, joker := range m.shopInfo.Items {
-		jokerStr := renderJoker(m, joker)
+		jokerStr := renderJoker(*m, joker)
 
 		posNumStyle := lipgloss.NewStyle().
 			Foreground(lipgloss.Color("244"))
@@ -51,7 +51,7 @@ func (ms ShoppingMode) renderContent(m TUIModel) string {
 	)
 }
 
-func (gm ShoppingMode) handleKeyPress(m *TUIModel, msg string) (tea.Model, tea.Cmd) {
+func (gm *ShoppingMode) handleKeyPress(m *TUIModel, msg string) (tea.Model, tea.Cmd) {
 	// Update last activity time on any key press
 	m.lastActivity = time.Now()
 
@@ -153,11 +153,11 @@ func renderJoker(m TUIModel, joker game.ShopItemData) string {
 	return jokerStr
 }
 
-func (gm ShoppingMode) toggleHelp() Mode {
+func (gm *ShoppingMode) toggleHelp() Mode {
 	return &ShopHelpMode{}
 }
 
-func (gm ShoppingMode) getControls() string {
+func (gm *ShoppingMode) getControls() string {
 	// TODO I do think we'll need the game state to know how many shop items are available
 	// but for now hardcode to 4
 	return " | 1-4: select item, Enter (with selected): purchase, Enter (without selected): exit, C: clear, R: reroll, H: help, ESC: exit, Q: quit"
@@ -166,7 +166,7 @@ func (gm ShoppingMode) getControls() string {
 type ShopHelpMode struct{}
 
 // renderHelp renders the help screen
-func (gm ShopHelpMode) renderContent(m TUIModel) string {
+func (gm ShopHelpMode) renderContent(m *TUIModel) string {
 	return "you're in the shop, brother"
 }
 

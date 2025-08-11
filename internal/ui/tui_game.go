@@ -12,11 +12,10 @@ import (
 	game "balatno/internal/game"
 )
 
-type GameMode struct {
-}
+type GameMode struct{}
 
 // renderContent renders the main game area
-func (gm GameMode) renderContent(m TUIModel) string {
+func (gm *GameMode) renderContent(m *TUIModel) string {
 	// Game status info - fixed height section
 	progress := float64(m.gameState.Score) / float64(m.gameState.Target)
 	if progress > 1.0 {
@@ -55,7 +54,7 @@ func (gm GameMode) renderContent(m TUIModel) string {
 		Height(5).
 		Render(gameInfo)
 
-	// Render hand - fixed height section
+		// Render hand - fixed height section
 	hand := renderHand(m)
 
 	return lipgloss.JoinVertical(
@@ -89,7 +88,7 @@ func renderCard(m TUIModel, card game.Card, isInSelectedArea bool) string {
 }
 
 // renderHand renders the player's current hand of cards
-func renderHand(m TUIModel) string {
+func renderHand(m *TUIModel) string {
 	if len(m.cards) == 0 {
 		return handStyle.Height(10).Render("No cards in hand")
 	}
@@ -101,7 +100,7 @@ func renderHand(m TUIModel) string {
 	var cardViews []string
 	for i, card := range m.cards {
 		isSelected := m.isCardSelected(i)
-		cardStr := renderCard(m, card, false)
+		cardStr := renderCard(*m, card, false)
 
 		// Add position number below the card
 		posNumStyle := lipgloss.NewStyle().
@@ -126,7 +125,7 @@ func renderHand(m TUIModel) string {
 	return handStyle.Height(10).Render(content.String())
 }
 
-func (gm GameMode) handleKeyPress(m *TUIModel, msg string) (tea.Model, tea.Cmd) {
+func (gm *GameMode) handleKeyPress(m *TUIModel, msg string) (tea.Model, tea.Cmd) {
 	// Update last activity time on any key press
 	m.lastActivity = time.Now()
 
@@ -171,18 +170,18 @@ func (gm GameMode) handleKeyPress(m *TUIModel, msg string) (tea.Model, tea.Cmd) 
 	return m, nil
 }
 
-func (gm GameMode) toggleHelp() Mode {
+func (gm *GameMode) toggleHelp() Mode {
 	return &GameHelpMode{}
 }
 
-func (gm GameMode) getControls() string {
+func (gm *GameMode) getControls() string {
 	return " | 1-7: select cards, Enter/P: play, D: discard, C: clear, R: resort, H: help, Q: quit"
 }
 
 type GameHelpMode struct{}
 
 // renderHelp renders the help screen
-func (gm GameHelpMode) renderContent(m TUIModel) string {
+func (gm GameHelpMode) renderContent(m *TUIModel) string {
 	helpStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color("33")).
