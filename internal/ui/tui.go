@@ -371,7 +371,11 @@ func (m TUIModel) View() string {
 	timeStr := time.Now().Format("15:04:05")
 	timeoutRemaining := m.timeoutDuration - time.Since(m.lastActivity)
 	timeoutStr := fmt.Sprintf("%.0fs", timeoutRemaining.Seconds())
-	controls := "⏰ " + timeStr + " | Timeout: " + timeoutStr + m.mode.getControls()
+	mode := m.mode
+	if mode == nil {
+		mode = GameMode{}
+	}
+	controls := "⏰ " + timeStr + " | Timeout: " + timeoutStr + mode.getControls()
 	bottomBar := bottomBarStyle.
 		Width(m.width).
 		Render(controls)
@@ -384,7 +388,7 @@ func (m TUIModel) View() string {
 	// 	m.mode = m.mode.toggleHelp()
 	// }
 
-	content = m.mode.renderContent(m)
+	content = mode.renderContent(m)
 
 	renderedContent := mainContentStyle.
 		Width(m.width).
@@ -570,6 +574,7 @@ func RunTUI() error {
 		lastActivity:    time.Now(),
 		currentTime:     time.Now(),
 		selectedCards:   []int{},
+		mode:            GameMode{},
 	}
 	// model.Init()
 

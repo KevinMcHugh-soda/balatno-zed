@@ -83,3 +83,16 @@ func TestShoppingModeActions(t *testing.T) {
 		t.Fatalf("unexpected reroll response: %+v", resp)
 	}
 }
+
+// TestViewHandlesNilMode ensures View does not panic when mode is unset.
+func TestViewHandlesNilMode(t *testing.T) {
+	m := TUIModel{width: 10, height: 10}
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				t.Fatalf("View panicked: %v", r)
+			}
+		}()
+		_ = m.View()
+	}()
+}
