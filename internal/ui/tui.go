@@ -418,9 +418,17 @@ func (m TUIModel) View() string {
 	content = m.mode.renderContent(m)
 
 	logWidth := 30
-	contentWidth := m.width - logWidth
+	logFrame, _ := eventLogStyle.GetFrameSize()
+	logContentWidth := logWidth - logFrame
+	if logContentWidth < 0 {
+		logContentWidth = 0
+	}
+
+	contentAreaWidth := m.width - logWidth
+	mainFrame, _ := mainContentStyle.GetFrameSize()
+	contentWidth := contentAreaWidth - mainFrame
 	if contentWidth < 0 {
-		contentWidth = m.width
+		contentWidth = 0
 	}
 
 	renderedContent := mainContentStyle.
@@ -429,7 +437,7 @@ func (m TUIModel) View() string {
 		Render(content)
 
 	logView := eventLogStyle.
-		Width(logWidth).
+		Width(logContentWidth).
 		Height(contentHeight).
 		Render(m.renderEventLog(contentHeight))
 
