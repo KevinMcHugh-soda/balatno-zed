@@ -766,8 +766,7 @@ func removeCards(cards []Card, indices []int) []Card {
 	return result
 }
 
-// handleResortAction toggles the sort mode and redisplays cards
-// handleResortAction handles resorting cards
+// handleResortAction toggles the card sort mode and updates the display mapping
 func (g *Game) handleResortAction() {
 	if g.sortMode == SortByRank {
 		g.sortMode = SortBySuit
