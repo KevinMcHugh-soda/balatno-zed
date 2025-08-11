@@ -27,6 +27,37 @@ func TestToggleCardSelection(t *testing.T) {
 	}
 }
 
+// TestResortPreservesSelection ensures selected cards stay selected after resorting.
+func TestResortPreservesSelection(t *testing.T) {
+	m := TUIModel{
+		cards: []game.Card{
+			{Rank: game.Two, Suit: game.Hearts},
+			{Rank: game.Three, Suit: game.Spades},
+			{Rank: game.Four, Suit: game.Diamonds},
+		},
+	}
+
+	m.toggleCardSelection(0)
+	if len(m.selectedCards) != 1 || m.selectedCards[0] != 0 {
+		t.Fatalf("expected card 0 to be selected")
+	}
+
+	m.handleResort()
+
+	resorted := []game.Card{m.cards[1], m.cards[2], m.cards[0]}
+	event := game.CardsDealtEvent{
+		Cards:          resorted,
+		DisplayMapping: []int{1, 2, 0},
+		SortMode:       "rank",
+	}
+	model, _ := m.Update(cardsDealtMsg(event))
+	m = model.(TUIModel)
+
+	if len(m.selectedCards) != 1 || m.selectedCards[0] != 2 {
+		t.Fatalf("expected selection to move to index 2, got %v", m.selectedCards)
+	}
+}
+
 // TestHelpToggle ensures that pressing 'h' toggles help mode on and off.
 func TestHelpToggle(t *testing.T) {
 	m := TUIModel{mode: GameMode{}}

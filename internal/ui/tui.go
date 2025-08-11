@@ -42,7 +42,8 @@ type TUIModel struct {
 	width             int
 	height            int
 	showHelp          bool
-	selectedCards     []int // indices of selected cards (0-based)
+	selectedCards     []int       // indices of selected cards (0-based)
+	selectedCardCache []game.Card // cards selected prior to resort
 	statusMessage     string
 	statusMessageTime time.Time
 	eventLog          []string
@@ -164,6 +165,19 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		copy(m.displayMap, event.DisplayMapping)
 		m.sortMode = event.SortMode
 		m.logEvent(fmt.Sprintf("Dealt %d cards (sorted by %s)", len(event.Cards), event.SortMode))
+		if len(m.selectedCardCache) > 0 {
+			var newSelection []int
+			for _, sel := range m.selectedCardCache {
+				for idx, card := range m.cards {
+					if card == sel {
+						newSelection = append(newSelection, idx)
+						break
+					}
+				}
+			}
+			m.selectedCards = newSelection
+			m.selectedCardCache = nil
+		}
 		return m, nil
 
 	case handPlayedMsg:
@@ -618,6 +632,16 @@ func (m *TUIModel) handleDiscard() {
 
 // handleResort processes resort action
 func (m *TUIModel) handleResort() {
+	if len(m.selectedCards) > 0 {
+		m.selectedCardCache = make([]game.Card, len(m.selectedCards))
+		for i, idx := range m.selectedCards {
+			if idx >= 0 && idx < len(m.cards) {
+				m.selectedCardCache[i] = m.cards[idx]
+			}
+		}
+	} else {
+		m.selectedCardCache = nil
+	}
 	m.sendAction(game.PlayerActionResort, nil)
 }
 
