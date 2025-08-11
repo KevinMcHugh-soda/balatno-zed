@@ -140,7 +140,7 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Game event messages
 	case gameStartedMsg:
 		m.setStatusMessage("🎮 Game started! Select cards with 1-7, play with Enter/P, discard with D")
-		m.mode = GameMode{}
+		m.mode = &GameMode{}
 		return m, nil
 
 	case gameStateChangedMsg:
@@ -247,7 +247,7 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		shopCopy := event
 		m.shopInfo = &shopCopy
 		m.gameState.Money = event.Money
-		m.mode = ShoppingMode{}
+		m.mode = &ShoppingMode{}
 		m.setStatusMessage("🛍️ Welcome to the Shop!")
 		return m, nil
 
@@ -276,7 +276,7 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case shopClosedMsg:
 		m.shopInfo = nil
 		m.setStatusMessage("👋 Left the shop")
-		m.mode = GameMode{}
+		m.mode = &GameMode{}
 		return m, nil
 
 	case invalidActionMsg:
@@ -384,7 +384,7 @@ func (m TUIModel) View() string {
 	// 	m.mode = m.mode.toggleHelp()
 	// }
 
-	content = m.mode.renderContent(m)
+	content = m.mode.renderContent(&m)
 
 	renderedContent := mainContentStyle.
 		Width(m.width).
@@ -409,7 +409,7 @@ func tickCmd() tea.Cmd {
 }
 
 type Mode interface {
-	renderContent(m TUIModel) string
+	renderContent(m *TUIModel) string
 	toggleHelp() Mode
 	handleKeyPress(m *TUIModel, msg string) (tea.Model, tea.Cmd)
 	getControls() string

@@ -16,7 +16,7 @@ type GameMode struct {
 }
 
 // renderContent renders the main game area
-func (gm GameMode) renderContent(m TUIModel) string {
+func (gm *GameMode) renderContent(m *TUIModel) string {
 	// Game status info - fixed height section
 	progress := float64(m.gameState.Score) / float64(m.gameState.Target)
 	if progress > 1.0 {
@@ -72,8 +72,8 @@ func (gm GameMode) renderContent(m TUIModel) string {
 		Height(infoHeight).
 		Render(gameInfo)
 
-	// Render hand - fixed height section
-	hand := renderHand(m)
+		// Render hand - fixed height section
+	hand := renderHand(*m)
 
 	return lipgloss.JoinVertical(
 		lipgloss.Left,
@@ -148,7 +148,7 @@ func renderOwnedJoker(joker game.Joker) string {
 	return fmt.Sprintf("%s: %s", joker.Name, joker.Description)
 }
 
-func (gm GameMode) handleKeyPress(m *TUIModel, msg string) (tea.Model, tea.Cmd) {
+func (gm *GameMode) handleKeyPress(m *TUIModel, msg string) (tea.Model, tea.Cmd) {
 	// Update last activity time on any key press
 	m.lastActivity = time.Now()
 
@@ -193,18 +193,18 @@ func (gm GameMode) handleKeyPress(m *TUIModel, msg string) (tea.Model, tea.Cmd) 
 	return m, nil
 }
 
-func (gm GameMode) toggleHelp() Mode {
+func (gm *GameMode) toggleHelp() Mode {
 	return &GameHelpMode{}
 }
 
-func (gm GameMode) getControls() string {
+func (gm *GameMode) getControls() string {
 	return " | 1-7: select cards, Enter/P: play, D: discard, C: clear, R: resort, H: help, Q: quit"
 }
 
 type GameHelpMode struct{}
 
 // renderHelp renders the help screen
-func (gm GameHelpMode) renderContent(m TUIModel) string {
+func (gm GameHelpMode) renderContent(m *TUIModel) string {
 	helpStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color("33")).

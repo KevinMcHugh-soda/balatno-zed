@@ -95,7 +95,7 @@ The TUI implements a sophisticated mode system that handles different game state
 
 ```go
 type Mode interface {
-    renderContent(m TUIModel) string
+    renderContent(m *TUIModel) string
     toggleHelp() Mode
     handleKeyPress(m *TUIModel, msg string) (tea.Model, tea.Cmd)
     getControls() string
