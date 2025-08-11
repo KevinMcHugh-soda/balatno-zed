@@ -16,8 +16,8 @@ type ShoppingMode struct {
 
 func (ms ShoppingMode) renderContent(m TUIModel) string {
 	gameInfo := fmt.Sprintf("%s Ante %d - %s✅\n", "🏪", m.gameState.Ante, m.gameState.Blind) +
-		fmt.Sprintf("🎴 Hands: %d | 🗑️ Discards: %d | 💰 Money: $%d",
-			m.gameState.Hands, m.gameState.Discards, m.gameState.Money)
+		fmt.Sprintf("🎴 Hands: %d | 🗑️ Discards: %d | 💰 Money: $%d | 🎲 Reroll: $%d",
+			m.gameState.Hands, m.gameState.Discards, m.gameState.Money, m.shopInfo.RerollCost)
 	gameInfoBox := gameInfoStyle.
 		Height(5).
 		Render(gameInfo)
@@ -177,9 +177,9 @@ func (gm ShopHelpMode) handleKeyPress(m *TUIModel, msg string) (tea.Model, tea.C
 	m.lastActivity = time.Now()
 	// fmt.Println(msg)
 	m.setStatusMessage(msg)
-	if msg == "esc" || msg == "h" || msg == "enter" {
+	if msg == "esc" || msg == "escape" || msg == "enter" {
 		m.showHelp = !m.showHelp
-		gm.toggleHelp()
+		m.mode = gm.toggleHelp()
 	}
 
 	return m, nil

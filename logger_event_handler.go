@@ -368,24 +368,23 @@ func (h *LoggerEventHandler) GetShopAction() (PlayerAction, []string, bool) {
 		return PlayerActionExitShop, nil, false
 	}
 
-	parts := strings.Split(input, "")
-	params := make([]string, 0)
-	for _, part := range parts[1:] {
-		if strings.TrimSpace(part) != "" {
-			params = append(params, part)
-		}
+	parts := strings.Fields(input)
+	var params []string
+	if len(parts) > 1 {
+		params = parts[1:]
 	}
+
 	var action PlayerAction
 	switch strings.ToLower(parts[0]) {
-	case "b":
+	case "b", "buy":
 		action = PlayerActionBuy
-	case "r":
+	case "r", "reroll":
 		action = PlayerActionReroll
 	default:
 		fmt.Println("No action recognized", input)
 		action = PlayerActionNone
 	}
-	// convert the option
+
 	return action, params, false
 }
 

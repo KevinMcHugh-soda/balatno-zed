@@ -138,23 +138,23 @@ func TestRerollCostProgression(t *testing.T) {
 	// Simulate reroll
 	if game.money >= game.rerollCost {
 		game.money -= game.rerollCost
-		game.rerollCost++
+		game.rerollCost += 2
 	}
 
-	// After first reroll, cost should be 6
-	if game.rerollCost != 6 {
-		t.Errorf("Expected reroll cost to be 6 after first reroll, got %d", game.rerollCost)
+	// After first reroll, cost should be 7
+	if game.rerollCost != 7 {
+		t.Errorf("Expected reroll cost to be 7 after first reroll, got %d", game.rerollCost)
 	}
 
 	// Simulate another reroll
 	if game.money >= game.rerollCost {
 		game.money -= game.rerollCost
-		game.rerollCost++
+		game.rerollCost += 2
 	}
 
-	// After second reroll, cost should be 7
-	if game.rerollCost != 7 {
-		t.Errorf("Expected reroll cost to be 7 after second reroll, got %d", game.rerollCost)
+	// After second reroll, cost should be 9
+	if game.rerollCost != 9 {
+		t.Errorf("Expected reroll cost to be 9 after second reroll, got %d", game.rerollCost)
 	}
 }
 

@@ -244,7 +244,6 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		event := ShopOpenedEvent(msg)
 		shopCopy := event
 		m.shopInfo = &shopCopy
-		// Sync money with the game state when entering the shop
 		m.gameState.Money = event.Money
 		m.mode = ShoppingMode{}
 		m.setStatusMessage("🛍️ Welcome to the Shop!")
@@ -266,8 +265,9 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		event := ShopRerolledEvent(msg)
 		// Update money after reroll and reflect new reroll cost/items
 		m.gameState.Money = event.RemainingMoney
-		if m.shopInfo != nil {
 			m.shopInfo.Money = event.RemainingMoney
+			m.shopInfo.RerollCost = event.NewRerollCost
+			m.shopInfo.Items = event.NewItems
 		}
 		m.setStatusMessage(fmt.Sprintf("💫 Shop rerolled for $%d! Next reroll: $%d", event.Cost, event.NewRerollCost))
 		return m, nil

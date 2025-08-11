@@ -348,6 +348,7 @@ func (g *Game) handleDiscardAction(params []string) {
 func (g *Game) parseCardSelection(params []string) ([]Card, []int, bool) {
 	var selectedCards []Card
 	var selectedIndices []int
+	seen := make(map[int]bool)
 
 	for _, param := range params {
 		displayIndex, err := strconv.Atoi(param)
@@ -358,6 +359,13 @@ func (g *Game) parseCardSelection(params []string) ([]Card, []int, bool) {
 			})
 			return nil, nil, false
 		}
+
+		if seen[displayIndex] {
+			g.eventEmitter.EmitWarning(fmt.Sprintf("Duplicate card number: %d ignored", displayIndex))
+			continue
+		}
+		seen[displayIndex] = true
+
 		// Since playerCards is already sorted by updateDisplayToOriginalMapping,
 		// display position directly corresponds to current array position
 		arrayIndex := displayIndex - 1 // Convert 1-based to 0-based
@@ -530,7 +538,7 @@ func (g *Game) showShop() {
 			if g.money >= g.rerollCost {
 				oldCost := g.rerollCost
 				g.money -= g.rerollCost
-				g.rerollCost++
+				g.rerollCost += 2
 
 				// Generate new shop items
 				if len(availableJokers) >= 2 {
@@ -658,7 +666,7 @@ func (g *Game) showShopWithItems(availableJokers []Joker, shopItems []Joker) {
 			if g.money >= g.rerollCost {
 				oldCost := g.rerollCost
 				g.money -= g.rerollCost
-				g.rerollCost++
+				g.rerollCost += 2
 
 				// Generate new shop items
 				if len(availableJokers) >= 2 {
