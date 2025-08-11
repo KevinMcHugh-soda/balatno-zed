@@ -485,30 +485,17 @@ func (m *TUIModel) handlePlay() {
 		return
 	}
 
-	if m.actionRequestPending != nil {
-		// Convert selected indices to string params for game logic
-		var params []string
-		for _, index := range m.selectedCards {
-			// Convert 0-based TUI index to 1-based display index for game logic
-			params = append(params, fmt.Sprintf("%d", index+1))
-		}
-
-		// Capture response channel before clearing the pending request
-		responseChan := m.actionRequestPending.ResponseChan
-		m.actionRequestPending = nil
-
-		// Send response
-		go func() {
-			responseChan <- PlayerActionResponse{
-				Action: game.PlayerActionPlay,
-				Params: params,
-				Quit:   false,
-			}
-		}()
-
-		// Clear selection
-		m.selectedCards = []int{}
+	// Convert selected indices to string params for game logic
+	var params []string
+	for _, index := range m.selectedCards {
+		// Convert 0-based TUI index to 1-based display index for game logic
+		params = append(params, fmt.Sprintf("%d", index+1))
 	}
+
+	m.sendAction(game.PlayerActionPlay, params)
+
+	// Clear selection
+	m.selectedCards = []int{}
 }
 
 // handleDiscard processes discarding the selected cards
@@ -531,18 +518,7 @@ func (m *TUIModel) handleDiscard() {
 			params = append(params, fmt.Sprintf("%d", index+1))
 		}
 
-		// Capture response channel before clearing the pending request
-		responseChan := m.actionRequestPending.ResponseChan
-		m.actionRequestPending = nil
-
-		// Send response
-		go func() {
-			responseChan <- PlayerActionResponse{
-				Action: game.PlayerActionDiscard,
-				Params: params,
-				Quit:   false,
-			}
-		}()
+		m.sendAction(game.PlayerActionDiscard, params)
 
 		// Clear selection
 		m.selectedCards = []int{}
@@ -553,20 +529,25 @@ func (m *TUIModel) handleDiscard() {
 
 // handleResort processes resort action
 func (m *TUIModel) handleResort() {
-	if m.actionRequestPending != nil {
-		// Capture response channel before clearing the pending request
-		responseChan := m.actionRequestPending.ResponseChan
-		m.actionRequestPending = nil
+	m.sendAction(game.PlayerActionResort, nil)
+}
 
-		// Send response
-		go func() {
-			responseChan <- PlayerActionResponse{
-				Action: game.PlayerActionResort,
-				Params: nil,
-				Quit:   false,
-			}
-		}()
+// sendAction sends a PlayerActionResponse if an action request is pending
+func (m *TUIModel) sendAction(action game.PlayerAction, params []string) {
+	if m.actionRequestPending == nil {
+		return
 	}
+
+	responseChan := m.actionRequestPending.ResponseChan
+	m.actionRequestPending = nil
+
+	go func() {
+		responseChan <- PlayerActionResponse{
+			Action: action,
+			Params: params,
+			Quit:   false,
+		}
+	}()
 }
 
 // SetProgram allows the event handler to send messages to this TUI

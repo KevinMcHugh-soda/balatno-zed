@@ -77,20 +77,8 @@ func (gm ShoppingMode) handleKeyPress(m *TUIModel, msg string) (tea.Model, tea.C
 				return m, nil
 			}
 
-			if m.actionRequestPending != nil {
-				responseChan := m.actionRequestPending.ResponseChan
-				m.actionRequestPending = nil
+			m.sendAction(game.PlayerActionBuy, []string{strconv.Itoa(*gm.selectedItem)})
 
-				go func() {
-					responseChan <- PlayerActionResponse{
-						Action: game.PlayerActionBuy,
-						Params: []string{strconv.Itoa(*gm.selectedItem)},
-						Quit:   false,
-					}
-				}()
-
-				m.setStatusMessage("🚪 Exiting shop...")
-			}
 			// m.cards = append(m.cards, item)
 			m.setStatusMessage(fmt.Sprintf("🛒 Purchased %s!", item.Name))
 			return m, nil
@@ -102,42 +90,14 @@ func (gm ShoppingMode) handleKeyPress(m *TUIModel, msg string) (tea.Model, tea.C
 		// 	return m, nil
 		// }
 
-		if m.actionRequestPending != nil {
-			// Capture response channel before clearing the pending request
-			responseChan := m.actionRequestPending.ResponseChan
-			m.actionRequestPending = nil
-
-			// Send exit shop response
-			go func() {
-				responseChan <- PlayerActionResponse{
-					Action: game.PlayerActionExitShop,
-					Params: nil,
-					Quit:   false,
-				}
-			}()
-
-			m.setStatusMessage("🚪 Exiting shop...")
-		}
+		m.sendAction(game.PlayerActionExitShop, nil)
+		m.setStatusMessage("🚪 Exiting shop...")
 		return m, nil
 
 	case "r":
 		// Reroll shop items
-		if m.actionRequestPending != nil {
-			// Capture response channel before clearing the pending request
-			responseChan := m.actionRequestPending.ResponseChan
-			m.actionRequestPending = nil
-
-			// Send reroll response
-			go func() {
-				responseChan <- PlayerActionResponse{
-					Action: game.PlayerActionReroll,
-					Params: nil,
-					Quit:   false,
-				}
-			}()
-
-			m.setStatusMessage("🎲 Rerolling shop items...")
-		}
+		m.sendAction(game.PlayerActionReroll, nil)
+		m.setStatusMessage("🎲 Rerolling shop items...")
 		return m, nil
 	}
 	return m, nil
