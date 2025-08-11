@@ -382,8 +382,8 @@ const (
     BossBlind
 )
 
-// Calculates score requirements
-func GetBlindRequirement(ante int, blindType BlindType) int
+// Returns score requirements for a specific ante and blind type
+func GetAnteRequirement(ante int, blindType BlindType) int
 
 // Handles blind completion and advancement
 func (g *Game) handleBlindCompletion()
