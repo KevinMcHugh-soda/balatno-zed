@@ -12,8 +12,8 @@ type ShoppingMode struct{}
 
 func (ms ShoppingMode) renderContent(m TUIModel) string {
 	gameInfo := fmt.Sprintf("%s Ante %d - %s✅\n", "🏪", m.gameState.Ante, m.gameState.Blind) +
-		fmt.Sprintf("🎴 Hands: %d | 🗑️ Discards: %d | 💰 Money: $%d",
-			m.gameState.Hands, m.gameState.Discards, m.gameState.Money)
+		fmt.Sprintf("🎴 Hands: %d | 🗑️ Discards: %d | 💰 Money: $%d | 🎲 Reroll: $%d",
+			m.gameState.Hands, m.gameState.Discards, m.gameState.Money, m.shopInfo.RerollCost)
 	gameInfoBox := gameInfoStyle.
 		Height(5).
 		Render(gameInfo)

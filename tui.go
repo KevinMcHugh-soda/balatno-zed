@@ -240,6 +240,7 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		event := ShopOpenedEvent(msg)
 		shopCopy := event
 		m.shopInfo = &shopCopy
+		m.gameState.Money = event.Money
 		m.mode = ShoppingMode{}
 		m.setStatusMessage("🛍️ Welcome to the Shop!")
 		return m, nil
@@ -247,12 +248,18 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case shopItemPurchasedMsg:
 		m.lastActivity = time.Now() // User purchased item
 		event := ShopItemPurchasedEvent(msg)
+		m.gameState.Money = event.RemainingMoney
 		m.setStatusMessage(fmt.Sprintf("✨ Purchased %s! Remaining: $%d", event.Item.Name, event.RemainingMoney))
 		return m, nil
 
 	case shopRerolledMsg:
 		m.lastActivity = time.Now() // User rerolled shop
 		event := ShopRerolledEvent(msg)
+		m.gameState.Money = event.RemainingMoney
+		if m.shopInfo != nil {
+			m.shopInfo.RerollCost = event.NewRerollCost
+			m.shopInfo.Items = event.NewItems
+		}
 		m.setStatusMessage(fmt.Sprintf("💫 Shop rerolled for $%d! Next reroll: $%d", event.Cost, event.NewRerollCost))
 		return m, nil
 

@@ -93,7 +93,7 @@ func (h *LoggerEventHandler) handleCardsDealt(e CardsDealtEvent) {
 			fmt.Println()
 		}
 	}
-	fmt.Println("\n")
+	fmt.Println()
 }
 
 func (h *LoggerEventHandler) handleHandPlayed(e HandPlayedEvent) {
