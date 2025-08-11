@@ -51,8 +51,25 @@ func (gm GameMode) renderContent(m TUIModel) string {
 		fmt.Sprintf("🎴 Hands Left: %d | 🗑️ Discards Left: %d | 💰 Money: $%d",
 			m.gameState.Hands, m.gameState.Discards, m.gameState.Money)
 
+	// Add joker information
+	var jokerLines []string
+	if len(m.gameState.Jokers) == 0 {
+		jokerLines = append(jokerLines, "🃏 Jokers: None")
+	} else {
+		jokerLines = append(jokerLines, "🃏 Jokers:")
+		for _, joker := range m.gameState.Jokers {
+			jokerLines = append(jokerLines, renderOwnedJoker(joker))
+		}
+	}
+	gameInfo += "\n" + strings.Join(jokerLines, "\n")
+
+	infoHeight := 3 + len(jokerLines)
+	if infoHeight < 5 {
+		infoHeight = 5
+	}
+
 	gameInfoBox := gameInfoStyle.
-		Height(5).
+		Height(infoHeight).
 		Render(gameInfo)
 
 	// Render hand - fixed height section
@@ -124,6 +141,11 @@ func renderHand(m TUIModel) string {
 	content.WriteString(cardsDisplay)
 
 	return handStyle.Height(10).Render(content.String())
+}
+
+// renderOwnedJoker renders a joker the player currently owns
+func renderOwnedJoker(joker game.Joker) string {
+	return fmt.Sprintf("%s: %s", joker.Name, joker.Description)
 }
 
 func (gm GameMode) handleKeyPress(m *TUIModel, msg string) (tea.Model, tea.Cmd) {
