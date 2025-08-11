@@ -280,7 +280,7 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		shopCopy := event
 		m.shopInfo = &shopCopy
 		m.gameState.Money = event.Money
-		m.mode = ShoppingMode{}
+		m.mode = &ShoppingMode{}
 		m.setStatusMessage("🛍️ Welcome to the Shop!")
 		m.logEvent("Entered shop")
 		return m, nil

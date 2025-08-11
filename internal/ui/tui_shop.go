@@ -51,7 +51,7 @@ func (ms ShoppingMode) renderContent(m TUIModel) string {
 	)
 }
 
-func (gm ShoppingMode) handleKeyPress(m *TUIModel, msg string) (tea.Model, tea.Cmd) {
+func (gm *ShoppingMode) handleKeyPress(m *TUIModel, msg string) (tea.Model, tea.Cmd) {
 	// Update last activity time on any key press
 	m.lastActivity = time.Now()
 
@@ -66,10 +66,10 @@ func (gm ShoppingMode) handleKeyPress(m *TUIModel, msg string) (tea.Model, tea.C
 			return m, nil
 		}
 		gm.selectedItem = &i
+		gm.consecutiveEnters = 0
 		return m, nil
 
 	case "enter":
-		// Exit the shop
 		if gm.selectedItem != nil {
 			item := m.shopInfo.Items[*gm.selectedItem]
 			if !item.CanAfford {
@@ -78,18 +78,18 @@ func (gm ShoppingMode) handleKeyPress(m *TUIModel, msg string) (tea.Model, tea.C
 			}
 
 			m.sendAction(game.PlayerActionBuy, []string{strconv.Itoa(*gm.selectedItem)})
-
-			// m.cards = append(m.cards, item)
 			m.setStatusMessage(fmt.Sprintf("🛒 Purchased %s!", item.Name))
+			gm.consecutiveEnters = 0
 			return m, nil
 		}
 
-		// if gm.consecutiveEnters == 0 {
-		// 	gm.consecutiveEnters++
-		// 	m.setStatusMessage("Press 'Enter' again to exit shop")
-		// 	return m, nil
-		// }
+		if gm.consecutiveEnters == 0 {
+			gm.consecutiveEnters++
+			m.setStatusMessage("Press 'Enter' again to exit shop")
+			return m, nil
+		}
 
+		gm.consecutiveEnters = 0
 		m.sendAction(game.PlayerActionExitShop, nil)
 		m.setStatusMessage("🚪 Exiting shop...")
 		return m, nil
@@ -98,8 +98,10 @@ func (gm ShoppingMode) handleKeyPress(m *TUIModel, msg string) (tea.Model, tea.C
 		// Reroll shop items
 		m.sendAction(game.PlayerActionReroll, nil)
 		m.setStatusMessage("🎲 Rerolling shop items...")
+		gm.consecutiveEnters = 0
 		return m, nil
 	}
+	gm.consecutiveEnters = 0
 	return m, nil
 }
 
@@ -120,7 +122,7 @@ func (gm ShoppingMode) toggleHelp() Mode {
 func (gm ShoppingMode) getControls() string {
 	// TODO I do think we'll need the game state to know how many shop items are available
 	// but for now hardcode to 4
-	return " | 1-4: select item, Enter (with selected): purchase, Enter (without selected): exit, C: clear, R: reroll, H: help, ESC: exit, Q: quit"
+	return " | 1-4: select item, Enter (with selected): purchase, Enter twice (without selected): exit, C: clear, R: reroll, H: help, ESC: exit, Q: quit"
 }
 
 type ShopHelpMode struct{}
