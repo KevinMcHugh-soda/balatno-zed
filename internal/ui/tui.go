@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
@@ -61,6 +62,8 @@ type TUIModel struct {
 	// Communication with game
 	actionRequestPending *PlayerActionRequest
 	program              *tea.Program
+
+	viewport viewport.Model
 }
 
 // getTimeoutDuration reads the BALATRO_TIMEOUT environment variable or returns default 60s
@@ -100,6 +103,7 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+		m.viewport = viewport.New(30, m.height)
 		return m, nil
 
 	case tea.KeyMsg:
@@ -421,18 +425,15 @@ func (m TUIModel) View() string {
 	contentHeight := m.height - 3 // Account for top, status, and bottom bars
 
 	var content string
-	// if m.showHelp {
-	// 	m.mode = m.mode.toggleHelp()
-	// }
 
 	content = m.mode.renderContent(m)
 
 	logWidth := 30
-	logFrame, _ := eventLogStyle.GetFrameSize()
-	logContentWidth := logWidth - logFrame
-	if logContentWidth < 0 {
-		logContentWidth = 0
-	}
+	// logFrame, _ := eventLogStyle.GetFrameSize()
+	// logContentWidth := logWidth - logFrame
+	// if logContentWidth < 0 {
+	// 	logContentWidth = 0
+	// }
 
 	contentAreaWidth := m.width - logWidth
 	mainFrame, _ := mainContentStyle.GetFrameSize()
@@ -446,12 +447,13 @@ func (m TUIModel) View() string {
 		Height(contentHeight).
 		Render(content)
 
-	logView := eventLogStyle.
-		Width(logContentWidth).
-		Height(contentHeight).
-		Render(m.renderEventLog(contentHeight))
+	m.viewport.SetContent(m.renderEventLog(contentHeight, logWidth))
+	// logView := eventLogStyle.
+	// 	Width(logContentWidth).
+	// 	Height(contentHeight).
+	// 	Render(m.renderEventLog(contentHeight, logContentWidth))
 
-	mainArea := lipgloss.JoinHorizontal(lipgloss.Top, renderedContent, logView)
+	mainArea := lipgloss.JoinHorizontal(lipgloss.Top, renderedContent, m.viewport.View())
 
 	// Combine all parts with fixed layout
 	return lipgloss.JoinVertical(
@@ -497,13 +499,21 @@ func (m *TUIModel) logEvent(msg string) {
 }
 
 // renderEventLog returns the log contents trimmed to fit the given height
-func (m TUIModel) renderEventLog(height int) string {
+func (m TUIModel) renderEventLog(height, width int) string {
 	if len(m.eventLog) == 0 {
 		return ""
 	}
 	start := 0
 	if len(m.eventLog) > height {
 		start = len(m.eventLog) - height
+	}
+	truncatedStrs := make([]string, height)
+	for _, str := range m.eventLog[start:] {
+		if len(str) > width {
+			truncatedStrs = append(truncatedStrs, str[:width-3]+"...")
+		} else {
+			truncatedStrs = append(truncatedStrs, str)
+		}
 	}
 	return strings.Join(m.eventLog[start:], "\n")
 }
