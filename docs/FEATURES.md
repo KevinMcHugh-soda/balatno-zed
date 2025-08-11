@@ -313,3 +313,8 @@ The YAML joker system transforms gameplay from simple optimization to complex st
 - **A/B Testing**: Easy to compare different joker power levels
 
 This implementation brings Balatro CLI significantly closer to the authentic Balatro experience by adding both the crucial economic layer AND the strategic depth of configurable joker synergies that make the game endlessly replayable.
+
+## 💾 Save & Load
+
+- **Load from JSON**: Resume a run using `-load <file>`
+- **Save format**: JSON with `save_version`, `seed`, `current_ante`, `current_blind`, `current_money`, and `current_jokers`

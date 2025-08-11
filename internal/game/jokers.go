@@ -243,6 +243,16 @@ func GetAvailableJokers() []Joker {
 	return jokers
 }
 
+// GetJokerByName returns a Joker by its name if it exists
+func GetJokerByName(name string) (Joker, bool) {
+	for _, config := range jokerConfigs {
+		if config.Name == name {
+			return createJokerFromConfig(config), true
+		}
+	}
+	return Joker{}, false
+}
+
 // GetGoldenJoker returns The Golden Joker (for backward compatibility)
 func GetGoldenJoker() Joker {
 	for _, config := range jokerConfigs {

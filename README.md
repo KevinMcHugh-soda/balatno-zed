@@ -37,6 +37,22 @@ go run . -seed 42
 
 # TUI mode with seed
 go run . -tui -seed 42
+
+# Load a saved game
+go run . -load save.json
+```
+
+The JSON file should contain:
+
+```json
+{
+  "save_version": 1,
+  "seed": 42,
+  "current_ante": 1,
+  "current_blind": "Small Blind",
+  "current_money": 4,
+  "current_jokers": []
+}
 ```
 
 ### TUI Mode Timeout
