@@ -1,4 +1,4 @@
-package main
+package game
 
 import (
 	"fmt"
@@ -378,7 +378,7 @@ func (g *Game) parseCardSelection(params []string) ([]Card, []int, bool) {
 
 // removeAndDealCards removes selected cards and deals new ones
 func (g *Game) removeAndDealCards(selectedIndices []int) {
-	g.playerCards = removeCards(g.playerCards, selectedIndices)
+	g.playerCards = RemoveCards(g.playerCards, selectedIndices)
 	newCardsNeeded := len(selectedIndices)
 
 	// Deal new cards if available
@@ -757,8 +757,8 @@ func (g *Game) showShopWithItems(availableJokers []Joker, shopItems []Joker) {
 	}
 }
 
-// removeCards removes cards at specified indices and returns the new slice
-func removeCards(cards []Card, indices []int) []Card {
+// RemoveCards removes cards at specified indices and returns the new slice
+func RemoveCards(cards []Card, indices []int) []Card {
 	// Sort indices in descending order to remove from end first
 	sort.Sort(sort.Reverse(sort.IntSlice(indices)))
 

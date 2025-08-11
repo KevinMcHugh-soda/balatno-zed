@@ -1,4 +1,4 @@
-package main
+package ui
 
 import (
 	"fmt"
@@ -7,6 +7,8 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+
+	game "balatno/internal/game"
 )
 
 type ShoppingMode struct {
@@ -81,7 +83,7 @@ func (gm ShoppingMode) handleKeyPress(m *TUIModel, msg string) (tea.Model, tea.C
 
 				go func() {
 					responseChan <- PlayerActionResponse{
-						Action: PlayerActionBuy,
+						Action: game.PlayerActionBuy,
 						Params: []string{strconv.Itoa(*gm.selectedItem)},
 						Quit:   false,
 					}
@@ -108,7 +110,7 @@ func (gm ShoppingMode) handleKeyPress(m *TUIModel, msg string) (tea.Model, tea.C
 			// Send exit shop response
 			go func() {
 				responseChan <- PlayerActionResponse{
-					Action: PlayerActionExitShop,
+					Action: game.PlayerActionExitShop,
 					Params: nil,
 					Quit:   false,
 				}
@@ -128,7 +130,7 @@ func (gm ShoppingMode) handleKeyPress(m *TUIModel, msg string) (tea.Model, tea.C
 			// Send reroll response
 			go func() {
 				responseChan <- PlayerActionResponse{
-					Action: PlayerActionReroll,
+					Action: game.PlayerActionReroll,
 					Params: nil,
 					Quit:   false,
 				}
@@ -141,7 +143,7 @@ func (gm ShoppingMode) handleKeyPress(m *TUIModel, msg string) (tea.Model, tea.C
 	return m, nil
 }
 
-func renderJoker(m TUIModel, joker ShopItemData) string {
+func renderJoker(m TUIModel, joker game.ShopItemData) string {
 	cost := fmt.Sprintf("%d", joker.Cost)
 	if joker.Cost > m.gameState.Money {
 		cost = lipgloss.NewStyle().Foreground(lipgloss.Color("203")).Render(cost)

@@ -1,8 +1,6 @@
-package main
+package game
 
-import (
-	"testing"
-)
+import "testing"
 
 // Mock scanner for testing
 type MockScanner struct {

@@ -1,4 +1,4 @@
-package main
+package ui
 
 import (
 	"fmt"
@@ -8,6 +8,8 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+
+	game "balatno/internal/game"
 )
 
 type GameMode struct {
@@ -35,11 +37,11 @@ func (gm GameMode) renderContent(m TUIModel) string {
 	// Blind type emojis
 	blindEmoji := ""
 	switch m.gameState.Blind {
-	case SmallBlind:
+	case game.SmallBlind:
 		blindEmoji = "🔸"
-	case BigBlind:
+	case game.BigBlind:
 		blindEmoji = "🔶"
-	case BossBlind:
+	case game.BossBlind:
 		blindEmoji = "💀"
 	}
 
@@ -64,18 +66,18 @@ func (gm GameMode) renderContent(m TUIModel) string {
 }
 
 // renderCard renders a single card with appropriate styling
-func renderCard(m TUIModel, card Card, isInSelectedArea bool) string {
+func renderCard(m TUIModel, card game.Card, isInSelectedArea bool) string {
 	cardStr := fmt.Sprintf("%s%s", card.Rank.String(), card.Suit.String())
 
 	var style lipgloss.Style
 	switch card.Suit {
-	case Hearts:
+	case game.Hearts:
 		style = heartsCardStyle
-	case Diamonds:
+	case game.Diamonds:
 		style = diamondsCardStyle
-	case Clubs:
+	case game.Clubs:
 		style = clubsCardStyle
-	case Spades:
+	case game.Spades:
 		style = spadesCardStyle
 	}
 

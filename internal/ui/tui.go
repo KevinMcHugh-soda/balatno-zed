@@ -1,4 +1,4 @@
-package main
+package ui
 
 import (
 	"fmt"
@@ -9,26 +9,28 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+
+	game "balatno/internal/game"
 )
 
 // Bubbletea message types for game events
 type gameStartedMsg struct{}
-type gameOverMsg GameOverEvent
+type gameOverMsg game.GameOverEvent
 type victoryMsg struct{}
-type gameStateChangedMsg GameStateChangedEvent
-type cardsDealtMsg CardsDealtEvent
-type handPlayedMsg HandPlayedEvent
-type cardsDiscardedMsg CardsDiscardedEvent
-type cardsResortedMsg CardsResortedEvent
-type blindDefeatedMsg BlindDefeatedEvent
-type anteCompletedMsg AnteCompletedEvent
-type newBlindStartedMsg NewBlindStartedEvent
-type shopOpenedMsg ShopOpenedEvent
-type shopItemPurchasedMsg ShopItemPurchasedEvent
-type shopRerolledMsg ShopRerolledEvent
+type gameStateChangedMsg game.GameStateChangedEvent
+type cardsDealtMsg game.CardsDealtEvent
+type handPlayedMsg game.HandPlayedEvent
+type cardsDiscardedMsg game.CardsDiscardedEvent
+type cardsResortedMsg game.CardsResortedEvent
+type blindDefeatedMsg game.BlindDefeatedEvent
+type anteCompletedMsg game.AnteCompletedEvent
+type newBlindStartedMsg game.NewBlindStartedEvent
+type shopOpenedMsg game.ShopOpenedEvent
+type shopItemPurchasedMsg game.ShopItemPurchasedEvent
+type shopRerolledMsg game.ShopRerolledEvent
 type shopClosedMsg struct{}
-type invalidActionMsg InvalidActionEvent
-type messageEventMsg MessageEvent
+type invalidActionMsg game.InvalidActionEvent
+type messageEventMsg game.MessageEvent
 type playerActionRequestMsg PlayerActionRequest
 type tickMsg time.Time
 
@@ -48,11 +50,11 @@ type TUIModel struct {
 	lastActivity    time.Time
 
 	// Game state (updated by messages)
-	gameState  GameStateChangedEvent
-	cards      []Card
+	gameState  game.GameStateChangedEvent
+	cards      []game.Card
 	displayMap []int
 	sortMode   string
-	shopInfo   *ShopOpenedEvent
+	shopInfo   *game.ShopOpenedEvent
 	mode       Mode
 
 	// Communication with game
@@ -118,7 +120,7 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Send quit response
 				go func() {
 					responseChan <- PlayerActionResponse{
-						Action: PlayerActionNone,
+						Action: game.PlayerActionNone,
 						Params: nil,
 						Quit:   true,
 					}
@@ -142,12 +144,12 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case gameStateChangedMsg:
-		m.gameState = GameStateChangedEvent(msg)
+		m.gameState = game.GameStateChangedEvent(msg)
 		return m, nil
 
 	case cardsDealtMsg:
-		event := CardsDealtEvent(msg)
-		m.cards = make([]Card, len(event.Cards))
+		event := game.CardsDealtEvent(msg)
+		m.cards = make([]game.Card, len(event.Cards))
 		copy(m.cards, event.Cards)
 		m.displayMap = make([]int, len(event.DisplayMapping))
 		copy(m.displayMap, event.DisplayMapping)
@@ -156,7 +158,7 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case handPlayedMsg:
 		m.lastActivity = time.Now() // User played cards
-		event := HandPlayedEvent(msg)
+		event := game.HandPlayedEvent(msg)
 		var message string
 		scoreGained := event.FinalScore
 
@@ -177,7 +179,7 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case cardsDiscardedMsg:
 		m.lastActivity = time.Now() // User discarded cards
-		event := CardsDiscardedEvent(msg)
+		event := game.CardsDiscardedEvent(msg)
 		var cardNames []string
 		for _, card := range event.DiscardedCards {
 			cardNames = append(cardNames, card.String())
@@ -199,49 +201,49 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case cardsResortedMsg:
 		m.lastActivity = time.Now() // User resorted cards
-		event := CardsResortedEvent(msg)
+		event := game.CardsResortedEvent(msg)
 		m.setStatusMessage(fmt.Sprintf("🔄 Cards now sorted by %s", event.NewSortMode))
 		return m, nil
 
 	case blindDefeatedMsg:
-		event := BlindDefeatedEvent(msg)
+		event := game.BlindDefeatedEvent(msg)
 		// Update money immediately when blind is defeated so the
 		// shop shows the correct amount without waiting for the
 		// next blind to begin.
 		m.gameState.Money = event.NewMoney
 		var message string
 		switch event.BlindType {
-		case SmallBlind:
+		case game.SmallBlind:
 			message = "🔸 SMALL BLIND DEFEATED! Advancing to Big Blind..."
-		case BigBlind:
+		case game.BigBlind:
 			message = "🔶 BIG BLIND CRUSHED! Prepare for the Boss Blind..."
-		case BossBlind:
+		case game.BossBlind:
 			message = "💀 BOSS BLIND ANNIHILATED! 💀"
 		}
 		m.setStatusMessage(message)
 		return m, nil
 
 	case anteCompletedMsg:
-		event := AnteCompletedEvent(msg)
+		event := game.AnteCompletedEvent(msg)
 		m.setStatusMessage(fmt.Sprintf("🎊 ANTE %d COMPLETE! Starting Ante %d", event.CompletedAnte, event.NewAnte))
 		return m, nil
 
 	case newBlindStartedMsg:
-		event := NewBlindStartedEvent(msg)
+		event := game.NewBlindStartedEvent(msg)
 		blindEmoji := ""
 		switch event.Blind {
-		case SmallBlind:
+		case game.SmallBlind:
 			blindEmoji = "🔸"
-		case BigBlind:
+		case game.BigBlind:
 			blindEmoji = "🔶"
-		case BossBlind:
+		case game.BossBlind:
 			blindEmoji = "💀"
 		}
 		m.setStatusMessage(fmt.Sprintf("%s NOW ENTERING: %s (Ante %d) | Target: %d points", blindEmoji, event.Blind, event.Ante, event.Target))
 		return m, nil
 
 	case shopOpenedMsg:
-		event := ShopOpenedEvent(msg)
+		event := game.ShopOpenedEvent(msg)
 		shopCopy := event
 		m.shopInfo = &shopCopy
 		m.gameState.Money = event.Money
@@ -251,7 +253,7 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case shopItemPurchasedMsg:
 		m.lastActivity = time.Now() // User purchased item
-		event := ShopItemPurchasedEvent(msg)
+		event := game.ShopItemPurchasedEvent(msg)
 		// Update money after purchase so UI reflects remaining funds
 		m.gameState.Money = event.RemainingMoney
 		if m.shopInfo != nil {
@@ -262,13 +264,12 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case shopRerolledMsg:
 		m.lastActivity = time.Now() // User rerolled shop
-		event := ShopRerolledEvent(msg)
+		event := game.ShopRerolledEvent(msg)
 		// Update money after reroll and reflect new reroll cost/items
 		m.gameState.Money = event.RemainingMoney
-			m.shopInfo.Money = event.RemainingMoney
-			m.shopInfo.RerollCost = event.NewRerollCost
-			m.shopInfo.Items = event.NewItems
-		}
+		m.shopInfo.Money = event.RemainingMoney
+		m.shopInfo.RerollCost = event.NewRerollCost
+		m.shopInfo.Items = event.NewItems
 		m.setStatusMessage(fmt.Sprintf("💫 Shop rerolled for $%d! Next reroll: $%d", event.Cost, event.NewRerollCost))
 		return m, nil
 
@@ -279,12 +280,12 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case invalidActionMsg:
-		event := InvalidActionEvent(msg)
+		event := game.InvalidActionEvent(msg)
 		m.setStatusMessage(fmt.Sprintf("❌ %s", event.Reason))
 		return m, nil
 
 	case messageEventMsg:
-		event := MessageEvent(msg)
+		event := game.MessageEvent(msg)
 		switch event.Type {
 		case "error":
 			m.setStatusMessage(fmt.Sprintf("❌ %s", event.Message))
@@ -300,7 +301,7 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case gameOverMsg:
-		event := GameOverEvent(msg)
+		event := game.GameOverEvent(msg)
 		m.setStatusMessage(fmt.Sprintf("💀 GAME OVER! Final: %d/%d (Ante %d)", event.FinalScore, event.Target, event.Ante))
 		return m, nil
 
@@ -333,7 +334,7 @@ func (m TUIModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			// Send quit response
 			go func() {
 				responseChan <- PlayerActionResponse{
-					Action: PlayerActionNone,
+					Action: game.PlayerActionNone,
 					Params: nil,
 					Quit:   true,
 				}
@@ -499,7 +500,7 @@ func (m *TUIModel) handlePlay() {
 		// Send response
 		go func() {
 			responseChan <- PlayerActionResponse{
-				Action: PlayerActionPlay,
+				Action: game.PlayerActionPlay,
 				Params: params,
 				Quit:   false,
 			}
@@ -537,7 +538,7 @@ func (m *TUIModel) handleDiscard() {
 		// Send response
 		go func() {
 			responseChan <- PlayerActionResponse{
-				Action: PlayerActionDiscard,
+				Action: game.PlayerActionDiscard,
 				Params: params,
 				Quit:   false,
 			}
@@ -560,7 +561,7 @@ func (m *TUIModel) handleResort() {
 		// Send response
 		go func() {
 			responseChan <- PlayerActionResponse{
-				Action: PlayerActionResort,
+				Action: game.PlayerActionResort,
 				Params: nil,
 				Quit:   false,
 			}
@@ -602,7 +603,7 @@ func RunTUI() error {
 	eventHandler.SetTUIModel(&model)
 
 	// Create game with event handler
-	game := NewGame(eventHandler)
+	game := game.NewGame(eventHandler)
 
 	// Start the game in a goroutine
 	go game.Run()

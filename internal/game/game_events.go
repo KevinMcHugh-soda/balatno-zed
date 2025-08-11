@@ -1,4 +1,4 @@
-package main
+package game
 
 // Event represents something that happened in the game
 type Event interface {
