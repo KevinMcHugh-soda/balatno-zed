@@ -205,6 +205,10 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case blindDefeatedMsg:
 		event := BlindDefeatedEvent(msg)
+		// Update money immediately when blind is defeated so the
+		// shop shows the correct amount without waiting for the
+		// next blind to begin.
+		m.gameState.Money = event.NewMoney
 		var message string
 		switch event.BlindType {
 		case SmallBlind:
@@ -248,15 +252,20 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case shopItemPurchasedMsg:
 		m.lastActivity = time.Now() // User purchased item
 		event := ShopItemPurchasedEvent(msg)
+		// Update money after purchase so UI reflects remaining funds
 		m.gameState.Money = event.RemainingMoney
+		if m.shopInfo != nil {
+			m.shopInfo.Money = event.RemainingMoney
+		}
 		m.setStatusMessage(fmt.Sprintf("✨ Purchased %s! Remaining: $%d", event.Item.Name, event.RemainingMoney))
 		return m, nil
 
 	case shopRerolledMsg:
 		m.lastActivity = time.Now() // User rerolled shop
 		event := ShopRerolledEvent(msg)
+		// Update money after reroll and reflect new reroll cost/items
 		m.gameState.Money = event.RemainingMoney
-		if m.shopInfo != nil {
+			m.shopInfo.Money = event.RemainingMoney
 			m.shopInfo.RerollCost = event.NewRerollCost
 			m.shopInfo.Items = event.NewItems
 		}
