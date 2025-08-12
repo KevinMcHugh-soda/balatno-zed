@@ -149,3 +149,40 @@ func TestShowShopWithItems(t *testing.T) {
 		t.Fatalf("expected ShopItemPurchasedEvent to be emitted")
 	}
 }
+
+// TestHandSizeWithJoker verifies that a joker can increase the hand size.
+func TestHandSizeWithJoker(t *testing.T) {
+	g := &Game{
+		jokers: []Joker{{Effect: AddHandSize, EffectMagnitude: 2}},
+	}
+	if got := g.handSize(); got != InitialCards+2 {
+		t.Fatalf("expected hand size %d, got %d", InitialCards+2, got)
+	}
+}
+
+// TestDiscardLimitWithJoker verifies that a joker can increase discard count.
+func TestDiscardLimitWithJoker(t *testing.T) {
+	handler := &testEventHandler{}
+	deck := NewDeck()
+	g := &Game{
+		deck:         deck,
+		deckIndex:    InitialCards,
+		playerCards:  deck[:InitialCards],
+		jokers:       []Joker{{Effect: AddDiscards, EffectMagnitude: 2}},
+		eventEmitter: NewEventEmitter(),
+	}
+	g.eventEmitter.SetEventHandler(handler)
+
+	for i := 0; i < 5; i++ {
+		g.handleDiscardAction([]string{"1"})
+	}
+	if g.discardsUsed != 5 {
+		t.Fatalf("expected 5 discards used, got %d", g.discardsUsed)
+	}
+
+	// Exceeding the limit should not increase discardsUsed
+	g.handleDiscardAction([]string{"1"})
+	if g.discardsUsed != 5 {
+		t.Fatalf("discard limit not enforced, got %d", g.discardsUsed)
+	}
+}

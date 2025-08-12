@@ -13,9 +13,11 @@ import (
 type JokerEffect string
 
 const (
-	AddMoney JokerEffect = "AddMoney"
-	AddChips JokerEffect = "AddChips"
-	AddMult  JokerEffect = "AddMult"
+	AddMoney    JokerEffect = "AddMoney"
+	AddChips    JokerEffect = "AddChips"
+	AddMult     JokerEffect = "AddMult"
+	AddHandSize JokerEffect = "AddHandSize"
+	AddDiscards JokerEffect = "AddDiscards"
 )
 
 // HandMatchingRule represents when a joker effect should trigger
@@ -163,6 +165,8 @@ func createJokerFromConfig(config JokerConfig) Joker {
 			}
 			return 0, 0
 		}
+	case AddHandSize, AddDiscards:
+		// Passive effects handled directly in game logic
 	}
 
 	return joker
