@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"time"
 )
 
@@ -92,7 +93,11 @@ func (g *Game) Save() (string, error) {
 		return "", err
 	}
 
-	filename := time.Now().UTC().Format(time.RFC3339) + ".json"
+	if err := os.MkdirAll("saves", 0755); err != nil {
+		return "", err
+	}
+
+	filename := filepath.Join("saves", time.Now().UTC().Format(time.RFC3339)+".json")
 	if err := os.WriteFile(filename, data, 0644); err != nil {
 		return "", err
 	}
