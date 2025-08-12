@@ -81,6 +81,7 @@ type Game struct {
 	jokers            []Joker
 	rerollCost        int
 	eventEmitter      *SimpleEventEmitter
+	currentBoss       BossRule
 }
 
 // handSize returns the number of cards the player should hold based on jokers
@@ -89,6 +90,14 @@ func (g *Game) handSize() int {
 	for _, j := range g.jokers {
 		if j.Effect == AddHandSize {
 			size += j.EffectMagnitude
+		}
+	}
+	if g.currentBlind == BossBlind {
+		switch g.currentBoss {
+		case BossRuleMinusHand:
+			size--
+		case BossRulePlusHand:
+			size++
 		}
 	}
 	return size
@@ -103,6 +112,22 @@ func (g *Game) maxDiscards() int {
 		}
 	}
 	return max
+}
+
+// applyBossCardModifiers adjusts card values based on current boss rule
+func (g *Game) applyBossCardModifiers(cards []Card, cardValues int) int {
+	if g.currentBlind != BossBlind {
+		return cardValues
+	}
+	switch g.currentBoss {
+	case BossRuleNoHearts:
+		for _, c := range cards {
+			if c.Suit == Hearts {
+				cardValues -= c.Rank.Value()
+			}
+		}
+	}
+	return cardValues
 }
 
 type PrintMode int
@@ -130,6 +155,7 @@ func NewGame(eventHandler EventHandler) *Game {
 		jokers:       []Joker{},
 		rerollCost:   5, // Initial reroll cost
 		eventEmitter: NewEventEmitter(),
+		currentBoss:  BossRuleNone,
 	}
 
 	// Initialize random seed once
@@ -306,6 +332,7 @@ func (g *Game) handlePlayAction(params []string) {
 	hand := Hand{Cards: selectedCards}
 	evaluator, _, cardValues, baseScore := EvaluateHand(hand)
 	cardValues += extraCardValue
+	cardValues = g.applyBossCardModifiers(selectedCards, cardValues)
 
 	// Calculate joker bonuses using cards including replays
 	jokerChips, jokerMult := CalculateJokerHandBonus(g.jokers, evaluator.Name(), cardsForJokers)
@@ -471,11 +498,13 @@ func (g *Game) handleBlindCompletion() {
 		g.currentBlind = BigBlind
 	} else if g.currentBlind == BigBlind {
 		g.currentBlind = BossBlind
+		g.currentBoss = randomBossRule()
 	} else {
 		// Completed Boss Blind, advance to next ante
 		oldAnte := g.currentAnte
 		g.currentAnte++
 		g.currentBlind = SmallBlind
+		g.currentBoss = BossRuleNone
 		if g.currentAnte <= MaxAntes {
 			g.eventEmitter.EmitEvent(AnteCompletedEvent{
 				CompletedAnte: oldAnte,
@@ -507,6 +536,9 @@ func (g *Game) handleBlindCompletion() {
 			Target:   g.currentTarget,
 			NewCards: g.playerCards,
 		})
+		if g.currentBlind == BossBlind {
+			g.eventEmitter.EmitInfo(fmt.Sprintf("Boss effect: %s", g.currentBoss.Description()))
+		}
 
 		// Show shop between blinds
 		g.showShop()

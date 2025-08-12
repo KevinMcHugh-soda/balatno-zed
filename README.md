@@ -91,7 +91,7 @@ BALATRO_TIMEOUT=300 ./balatro -tui
 - Each Ante contains **3 Blinds** in sequence:
   - 🔸 **Small Blind** - Base difficulty
   - 🔶 **Big Blind** - 1.5x harder than Small Blind  
-  - 💀 **Boss Blind** - 2x harder than Small Blind (special rules coming soon!)
+  - 💀 **Boss Blind** - 2x harder than Small Blind with random boss effects (e.g. hearts score zero or reduced hand size)
 - **🏪 Shop** appears between each blind where you can spend money on Jokers
 
 ### Each Blind Challenge
@@ -468,7 +468,7 @@ type HandEvaluator interface {
 
 This implementation includes core progression with **YAML-configurable joker systems**. The full Balatro experience also includes:
 
-- **Boss Blind Effects**: Special rules and constraints for Boss Blinds *(coming soon!)*
+- **Boss Blind Effects**: Random modifiers like disabling hearts or altering hand size
 - **Extended Joker Effects**: Conditional triggers, card-specific bonuses, deck modifications
 - **Advanced Shop Items**: Tarot cards, Planet cards, and card packs
 - **Card Enhancements**: Foil, holographic, and other card modifications

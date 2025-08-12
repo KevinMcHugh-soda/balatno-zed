@@ -224,6 +224,18 @@ func PlayerHasJoker(playerJokers []Joker, jokerName string) bool
 
 ---
 
+## 💀 Boss Blind Modifiers
+
+Boss Blinds now apply a random rule to shake up gameplay:
+
+- **Hearts score zero** – any heart card contributes no value
+- **Hand size reduced by 1** – start the blind with one fewer card
+- **Hand size increased by 1** – begin with an extra card for more options
+
+These modifiers are announced at the start of each Boss Blind.
+
+---
+
 ## 🚀 Future Expansion
 
 ### Ready Framework

@@ -186,3 +186,43 @@ func TestDiscardLimitWithJoker(t *testing.T) {
 		t.Fatalf("discard limit not enforced, got %d", g.discardsUsed)
 	}
 }
+
+// TestBossNoHeartsDisablesScoring verifies that hearts don't contribute during Boss Blind.
+func TestBossNoHeartsDisablesScoring(t *testing.T) {
+	handler := &testEventHandler{}
+	deck := NewDeck()
+	g := &Game{
+		currentBlind: BossBlind,
+		currentBoss:  BossRuleNoHearts,
+		deck:         deck,
+		deckIndex:    7,
+		playerCards: []Card{
+			{Rank: Ten, Suit: Hearts},
+			{Rank: Two, Suit: Clubs},
+			{Rank: Three, Suit: Diamonds},
+			{Rank: Four, Suit: Spades},
+			{Rank: Five, Suit: Hearts},
+			{Rank: Six, Suit: Clubs},
+			{Rank: Seven, Suit: Diamonds},
+		},
+		eventEmitter: NewEventEmitter(),
+	}
+	g.eventEmitter.SetEventHandler(handler)
+
+	g.handlePlayAction([]string{"1"})
+
+	if g.totalScore != 5 {
+		t.Fatalf("expected score 5 with hearts disabled, got %d", g.totalScore)
+	}
+}
+
+// TestBossHandSizeReduction verifies boss rule can reduce hand size.
+func TestBossHandSizeReduction(t *testing.T) {
+	g := &Game{
+		currentBlind: BossBlind,
+		currentBoss:  BossRuleMinusHand,
+	}
+	if got := g.handSize(); got != InitialCards-1 {
+		t.Fatalf("expected hand size %d, got %d", InitialCards-1, got)
+	}
+}
