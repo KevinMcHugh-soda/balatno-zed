@@ -14,6 +14,8 @@ import (
 	game "balatno/internal/game"
 )
 
+const eventLogWidth = 60
+
 // Bubbletea message types for game events
 type gameStartedMsg struct{}
 type gameOverMsg game.GameOverEvent
@@ -104,7 +106,7 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		m.viewport = viewport.New(30, m.height)
+		m.viewport = viewport.New(80, m.height)
 		return m, nil
 
 	case tea.KeyMsg:
@@ -442,14 +444,7 @@ func (m TUIModel) View() string {
 
 	content = m.mode.renderContent(m)
 
-	logWidth := 30
-	// logFrame, _ := eventLogStyle.GetFrameSize()
-	// logContentWidth := logWidth - logFrame
-	// if logContentWidth < 0 {
-	// 	logContentWidth = 0
-	// }
-
-	contentAreaWidth := m.width - logWidth
+	contentAreaWidth := m.width - eventLogWidth
 	mainFrame, _ := mainContentStyle.GetFrameSize()
 	contentWidth := contentAreaWidth - mainFrame
 	if contentWidth < 0 {
@@ -461,7 +456,7 @@ func (m TUIModel) View() string {
 		Height(contentHeight).
 		Render(content)
 
-	m.viewport.SetContent(m.renderEventLog(contentHeight, logWidth))
+	m.viewport.SetContent(m.renderEventLog(contentHeight, eventLogWidth))
 	// logView := eventLogStyle.
 	// 	Width(logContentWidth).
 	// 	Height(contentHeight).
