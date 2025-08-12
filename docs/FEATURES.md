@@ -112,6 +112,10 @@ type Joker struct {
 - **Linear Logic** ($7): +20 mult if hand contains a Straight
 - **Effect**: Increases final multiplier for explosive scoring
 
+#### ReplayCard Jokers
+- **Face Dancer** ($7): Face cards are scored twice
+- **Effect**: Replays matching cards, doubling their value and bonuses
+
 ### Hand Matching Rules
 - **ContainsPair**: Triggers on Pair, Two Pair, Full House, Four of a Kind
 - **ContainsTwoPair**: Triggers on Two Pair, Full House

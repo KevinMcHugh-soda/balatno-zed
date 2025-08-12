@@ -52,3 +52,26 @@ func TestCardMatchingRule(t *testing.T) {
 		t.Fatalf("expected no bonus without matching cards, got chips=%d mult=%d", chips, mult)
 	}
 }
+
+// TestReplayFaceCards verifies that ReplayCard jokers process matching cards twice.
+func TestReplayFaceCards(t *testing.T) {
+	replayCfg := JokerConfig{Name: "Face Dancer", Effect: ReplayCard, CardMatchingRule: CardIsFace}
+	replayJoker := createJokerFromConfig(replayCfg)
+	bonusCfg := JokerConfig{Name: "Face Bonus", Effect: AddChips, EffectMagnitude: 10, CardMatchingRule: CardIsFace}
+	bonusJoker := createJokerFromConfig(bonusCfg)
+
+	cards := []Card{{Rank: Jack, Suit: Hearts}, {Rank: Five, Suit: Clubs}}
+	hand := Hand{Cards: cards}
+	evaluator, _, cardValues, baseScore := EvaluateHand(hand)
+
+	cardsForJokers, extraValue := ApplyReplayCardEffects([]Joker{replayJoker, bonusJoker}, cards)
+	cardValues += extraValue
+	chips, mult := CalculateJokerHandBonus([]Joker{replayJoker, bonusJoker}, evaluator.Name(), cardsForJokers)
+	finalBase := baseScore + chips
+	finalMult := evaluator.Multiplier() + mult
+	finalScore := (finalBase + cardValues) * finalMult
+
+	if finalScore != 50 {
+		t.Fatalf("expected final score 50, got %d", finalScore)
+	}
+}

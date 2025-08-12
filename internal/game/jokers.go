@@ -18,6 +18,7 @@ const (
 	AddMult     JokerEffect = "AddMult"
 	AddHandSize JokerEffect = "AddHandSize"
 	AddDiscards JokerEffect = "AddDiscards"
+	ReplayCard  JokerEffect = "ReplayCard"
 )
 
 // HandMatchingRule represents when a joker effect should trigger
@@ -148,6 +149,16 @@ func setDefaultJokerConfigs() {
 			HandMatchingRule: ContainsPair,
 			CardMatchingRule: CardNone,
 			Description:      "+8 Mult if played hand contains a Pair",
+		},
+		{
+			Name:             "Face Dancer",
+			Value:            7,
+			Rarity:           "Common",
+			Effect:           ReplayCard,
+			EffectMagnitude:  0,
+			HandMatchingRule: None,
+			CardMatchingRule: CardIsFace,
+			Description:      "Face cards are scored twice",
 		},
 	}
 }
@@ -356,6 +367,27 @@ func CalculateJokerHandBonus(jokers []Joker, handType string, cards []Card) (int
 	}
 
 	return totalChips, totalMult
+}
+
+// ApplyReplayCardEffects duplicates cards that match any ReplayCard joker
+// and returns the extended card slice along with additional card value
+// contributed by the replays.
+func ApplyReplayCardEffects(jokers []Joker, cards []Card) ([]Card, int) {
+	var replayed []Card
+	extraValue := 0
+	for _, joker := range jokers {
+		if joker.Effect == ReplayCard && joker.CardMatchingRule != CardNone {
+			for _, c := range cards {
+				if cardMatchesRule(c, joker.CardMatchingRule) {
+					replayed = append(replayed, c)
+					extraValue += c.Rank.Value()
+				}
+			}
+		}
+	}
+	combined := append([]Card{}, cards...)
+	combined = append(combined, replayed...)
+	return combined, extraValue
 }
 
 // FormatJokersList returns a formatted string of player's jokers
