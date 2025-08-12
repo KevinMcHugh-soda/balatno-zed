@@ -18,6 +18,7 @@ const (
 	AddMult     JokerEffect = "AddMult"
 	AddHandSize JokerEffect = "AddHandSize"
 	AddDiscards JokerEffect = "AddDiscards"
+	AddHands    JokerEffect = "AddHands"
 	ReplayCard  JokerEffect = "ReplayCard"
 )
 

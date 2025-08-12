@@ -114,6 +114,25 @@ func (g *Game) maxDiscards() int {
 	return max
 }
 
+func (g *Game) remainingDiscards() int {
+	return g.maxDiscards() - g.discardsUsed
+}
+
+// maxHandds returns allowed hands based on jokers
+func (g *Game) maxHands() int {
+	max := MaxHands
+	for _, j := range g.jokers {
+		if j.Effect == AddHands {
+			max += j.EffectMagnitude
+		}
+	}
+	return max
+}
+
+func (g *Game) remainingHands() int {
+	return g.maxHands() - g.handsPlayed
+}
+
 // applyBossCardModifiers adjusts card values based on current boss rule
 func (g *Game) applyBossCardModifiers(cards []Card, cardValues int) int {
 	if g.currentBlind != BossBlind {

@@ -230,8 +230,8 @@ func (e *SimpleEventEmitter) EmitGameState(g Game) {
 		Blind:    g.currentBlind,
 		Target:   g.currentTarget,
 		Score:    g.totalScore,
-		Hands:    MaxHands,        // TODO: Get the actual value from the game state
-		Discards: g.maxDiscards(), // TODO Get the actual value from the game state
+		Hands:    g.remainingHands(),
+		Discards: g.remainingDiscards(),
 		Money:    g.money,
 		Jokers:   g.jokers,
 	})
