@@ -133,13 +133,15 @@ func TestShowShopWithItems(t *testing.T) {
 	if len(g.jokers) != 1 || g.jokers[0].Name != "J1" {
 		t.Fatalf("expected to own J1 after purchase")
 	}
-	opened, purchased := false, false
+	opened, purchased, closed := false, false, false
 	for _, e := range handler.events {
 		switch e.(type) {
 		case ShopOpenedEvent:
 			opened = true
 		case ShopItemPurchasedEvent:
 			purchased = true
+		case ShopClosedEvent:
+			closed = true
 		}
 	}
 	if !opened {
@@ -147,6 +149,9 @@ func TestShowShopWithItems(t *testing.T) {
 	}
 	if !purchased {
 		t.Fatalf("expected ShopItemPurchasedEvent to be emitted")
+	}
+	if !closed {
+		t.Fatalf("expected ShopClosedEvent to be emitted on exit")
 	}
 }
 
