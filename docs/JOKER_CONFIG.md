@@ -54,6 +54,19 @@ Adds multiplier when playing matching hands.
 
 **Score Calculation**: `(base_score + card_values) × (base_mult + joker_mult)`
 
+### `ReplayCard`
+Replays matching cards so they're scored twice.
+
+```yaml
+- name: "Face Dancer"
+  effect: "ReplayCard"
+  effect_magnitude: 0
+  card_matching_rule: "IsFace"
+  description: "Face cards are scored twice"
+```
+
+**Score Calculation**: Matching cards add their value again and retrigger card-based bonuses.
+
 ## 🃏 Hand Matching Rules
 
 ### `None`

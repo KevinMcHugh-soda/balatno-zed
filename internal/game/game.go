@@ -289,12 +289,16 @@ func (g *Game) handlePlayAction(params []string) {
 		return
 	}
 
+	// Apply replay effects for matching cards
+	cardsForJokers, extraCardValue := ApplyReplayCardEffects(g.jokers, selectedCards)
+
 	// Evaluate the hand
 	hand := Hand{Cards: selectedCards}
 	evaluator, _, cardValues, baseScore := EvaluateHand(hand)
+	cardValues += extraCardValue
 
-	// Calculate joker bonuses
-	jokerChips, jokerMult := CalculateJokerHandBonus(g.jokers, evaluator.Name(), selectedCards)
+	// Calculate joker bonuses using cards including replays
+	jokerChips, jokerMult := CalculateJokerHandBonus(g.jokers, evaluator.Name(), cardsForJokers)
 
 	// Apply joker bonuses to final score
 	finalBaseScore := baseScore + jokerChips

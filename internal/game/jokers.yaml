@@ -126,3 +126,11 @@ jokers:
     effect_magnitude: 20
     card_matching_rule: "IsAce"
     description: "+20 Chips for each Ace played"
+
+  - name: "Face Dancer"
+    value: 7
+    rarity: "Common"
+    effect: "ReplayCard"
+    effect_magnitude: 0
+    card_matching_rule: "IsFace"
+    description: "Face cards are scored twice"
