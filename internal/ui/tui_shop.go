@@ -116,6 +116,10 @@ func (gm *ShoppingMode) handleKeyPress(m *TUIModel, msg string) (tea.Model, tea.
 		m.setStatusMessage("🎲 Rerolling shop items...")
 		gm.consecutiveEnters = 0
 		return m, nil
+
+	case "j":
+		m.mode = NewJokerOrderMode(gm)
+		return m, nil
 	}
 	gm.consecutiveEnters = 0
 	return m, nil
@@ -141,7 +145,7 @@ func (gm ShoppingMode) toggleHelp() Mode {
 func (gm ShoppingMode) getControls() string {
 	// TODO I do think we'll need the game state to know how many shop items are available
 	// but for now hardcode to 4
-	return " | 1-4: select item, Enter (with selected): purchase, Enter twice (without selected): exit, C: clear, R: reroll, H: help, ESC: exit, Q: quit"
+	return " | 1-4: select item, Enter (with selected): purchase, Enter twice (without selected): exit, C: clear, R: reroll, J: reorder jokers, H: help, ESC: exit, Q: quit"
 }
 
 type ShopHelpMode struct{}
