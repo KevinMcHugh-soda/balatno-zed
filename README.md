@@ -451,7 +451,7 @@ type HandEvaluator interface {
 - **🎭 Blind Indicators**: Unique emojis for each blind type (🔸🔶💀)
 - **🎆 Celebrations**: Escalating victory animations with detailed reward breakdowns
 - **💰 Money Tracking**: Always-visible money counter in game status
-- **🏪 Shop Interface**: Clean shop display with affordability indicators
+- **🏪 Shop Interface**: Clean shop display with affordability indicators and current joker list
 - **📍 Clear Status**: Ante, blind type, money, and requirements always visible
 - **🎨 Colorful Output**: Rich terminal formatting for better UX
 - **🔀 Joker Reordering**: Adjust joker priority directly from the TUI
