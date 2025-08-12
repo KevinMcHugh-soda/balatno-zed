@@ -36,6 +36,16 @@ const (
 	ContainsRoyalFlush    HandMatchingRule = "ContainsRoyalFlush"
 )
 
+// CardMatchingRule represents a rule for matching individual cards in a played hand
+type CardMatchingRule string
+
+const (
+	CardNone    CardMatchingRule = "None"
+	CardIsAce   CardMatchingRule = "IsAce"
+	CardIsSpade CardMatchingRule = "IsSpade"
+	CardIsFace  CardMatchingRule = "IsFace"
+)
+
 // JokerConfig represents a joker configuration from YAML
 type JokerConfig struct {
 	Name             string           `yaml:"name"`
@@ -44,6 +54,7 @@ type JokerConfig struct {
 	Effect           JokerEffect      `yaml:"effect"`
 	EffectMagnitude  int              `yaml:"effect_magnitude"`
 	HandMatchingRule HandMatchingRule `yaml:"hand_matching_rule"`
+	CardMatchingRule CardMatchingRule `yaml:"card_matching_rule"`
 	Description      string           `yaml:"description"`
 }
 
@@ -60,8 +71,9 @@ type Joker struct {
 	Effect           JokerEffect
 	EffectMagnitude  int
 	HandMatchingRule HandMatchingRule
-	OnBlindEnd       func() int              // Returns money earned at end of blind
-	OnHandScoring    func(string) (int, int) // Returns (chips, mult) bonus for hand type
+	CardMatchingRule CardMatchingRule
+	OnBlindEnd       func() int                      // Returns money earned at end of blind
+	OnHandScoring    func(string, []Card) (int, int) // Returns (chips, mult) bonus for hand
 }
 
 var jokerConfigs []JokerConfig
@@ -114,6 +126,7 @@ func setDefaultJokerConfigs() {
 			Effect:           AddMoney,
 			EffectMagnitude:  4,
 			HandMatchingRule: None,
+			CardMatchingRule: CardNone,
 			Description:      "Earn $4 at the end of each Blind",
 		},
 		{
@@ -123,6 +136,7 @@ func setDefaultJokerConfigs() {
 			Effect:           AddChips,
 			EffectMagnitude:  30,
 			HandMatchingRule: ContainsPair,
+			CardMatchingRule: CardNone,
 			Description:      "+30 Chips if played hand contains a Pair",
 		},
 		{
@@ -132,6 +146,7 @@ func setDefaultJokerConfigs() {
 			Effect:           AddMult,
 			EffectMagnitude:  8,
 			HandMatchingRule: ContainsPair,
+			CardMatchingRule: CardNone,
 			Description:      "+8 Mult if played hand contains a Pair",
 		},
 	}
@@ -139,6 +154,11 @@ func setDefaultJokerConfigs() {
 
 // createJokerFromConfig creates a Joker instance from a JokerConfig
 func createJokerFromConfig(config JokerConfig) Joker {
+	cardRule := config.CardMatchingRule
+	if cardRule == "" {
+		cardRule = CardNone
+	}
+
 	joker := Joker{
 		Name:             config.Name,
 		Description:      config.Description,
@@ -146,6 +166,7 @@ func createJokerFromConfig(config JokerConfig) Joker {
 		Effect:           config.Effect,
 		EffectMagnitude:  config.EffectMagnitude,
 		HandMatchingRule: config.HandMatchingRule,
+		CardMatchingRule: cardRule,
 	}
 
 	// Set up effect functions based on effect type
@@ -155,15 +176,25 @@ func createJokerFromConfig(config JokerConfig) Joker {
 			return config.EffectMagnitude
 		}
 	case AddChips, AddMult:
-		joker.OnHandScoring = func(handType string) (int, int) {
-			if handMatchesRule(handType, config.HandMatchingRule) {
-				if config.Effect == AddChips {
-					return config.EffectMagnitude, 0
-				} else {
-					return 0, config.EffectMagnitude
+		joker.OnHandScoring = func(handType string, cards []Card) (int, int) {
+			matches := 0
+			if cardRule != CardNone {
+				for _, c := range cards {
+					if cardMatchesRule(c, cardRule) {
+						matches++
+					}
 				}
+			} else if handMatchesRule(handType, config.HandMatchingRule) {
+				matches = 1
 			}
-			return 0, 0
+			if matches == 0 {
+				return 0, 0
+			}
+			bonus := config.EffectMagnitude * matches
+			if config.Effect == AddChips {
+				return bonus, 0
+			}
+			return 0, bonus
 		}
 	case AddHandSize, AddDiscards:
 		// Passive effects handled directly in game logic
@@ -195,6 +226,20 @@ func handMatchesRule(handType string, rule HandMatchingRule) bool {
 		return containsStraightFlush(handType)
 	case ContainsRoyalFlush:
 		return containsRoyalFlush(handType)
+	default:
+		return false
+	}
+}
+
+// cardMatchesRule checks if a card matches a given card rule
+func cardMatchesRule(card Card, rule CardMatchingRule) bool {
+	switch rule {
+	case CardIsAce:
+		return card.Rank == Ace
+	case CardIsSpade:
+		return card.Suit == Spades
+	case CardIsFace:
+		return card.Rank == Jack || card.Rank == Queen || card.Rank == King
 	default:
 		return false
 	}
@@ -298,13 +343,13 @@ func CalculateJokerRewards(jokers []Joker) int {
 }
 
 // CalculateJokerHandBonus calculates chips and mult bonus from jokers for a specific hand
-func CalculateJokerHandBonus(jokers []Joker, handType string) (int, int) {
+func CalculateJokerHandBonus(jokers []Joker, handType string, cards []Card) (int, int) {
 	totalChips := 0
 	totalMult := 0
 
 	for _, joker := range jokers {
 		if joker.OnHandScoring != nil {
-			chips, mult := joker.OnHandScoring(handType)
+			chips, mult := joker.OnHandScoring(handType, cards)
 			totalChips += chips
 			totalMult += mult
 		}
