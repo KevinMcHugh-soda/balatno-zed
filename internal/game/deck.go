@@ -95,9 +95,42 @@ func (r Rank) Value() int {
 	}
 }
 
+type Edition int
+
+const (
+	PlainEdition Edition = iota
+	Foil
+	Holo
+	Poly
+)
+
+type Sticker int
+
+const (
+	NoSticker Sticker = iota
+	Red
+	Purple
+	Blue
+)
+
+// I don't actually remember what these are called
+type Print int
+
+const (
+	PlainPrint Print = iota
+	PlusMult
+	PlusChips
+	Glass
+	Steel
+	Lucky
+)
+
 type Card struct {
-	Suit Suit
-	Rank Rank
+	Suit    Suit
+	Rank    Rank
+	Edition Edition
+	Sticker Sticker
+	Print   Print
 }
 
 func (c Card) String() string {

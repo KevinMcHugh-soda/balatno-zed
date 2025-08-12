@@ -25,7 +25,7 @@ const (
 type HandMatchingRule string
 
 const (
-	None                  HandMatchingRule = "None"
+	NilMatcher            HandMatchingRule = "NilMatcher"
 	ContainsPair          HandMatchingRule = "ContainsPair"
 	ContainsTwoPair       HandMatchingRule = "ContainsTwoPair"
 	ContainsThreeOfAKind  HandMatchingRule = "ContainsThreeOfAKind"
@@ -126,7 +126,7 @@ func setDefaultJokerConfigs() {
 			Rarity:           "Common",
 			Effect:           AddMoney,
 			EffectMagnitude:  4,
-			HandMatchingRule: None,
+			HandMatchingRule: NilMatcher,
 			CardMatchingRule: CardNone,
 			Description:      "Earn $4 at the end of each Blind",
 		},
@@ -156,7 +156,7 @@ func setDefaultJokerConfigs() {
 			Rarity:           "Common",
 			Effect:           ReplayCard,
 			EffectMagnitude:  0,
-			HandMatchingRule: None,
+			HandMatchingRule: NilMatcher,
 			CardMatchingRule: CardIsFace,
 			Description:      "Face cards are scored twice",
 		},
@@ -217,7 +217,7 @@ func createJokerFromConfig(config JokerConfig) Joker {
 // handMatchesRule checks if a hand type matches a given rule
 func handMatchesRule(handType string, rule HandMatchingRule) bool {
 	switch rule {
-	case None:
+	case NilMatcher:
 		return true
 	case ContainsPair:
 		return containsPair(handType)
