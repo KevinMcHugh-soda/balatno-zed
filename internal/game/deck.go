@@ -9,14 +9,22 @@ import (
 
 // Global random source for consistent seeding
 var rng *rand.Rand
+var currentSeed int64
 
 func init() {
-	rng = rand.New(rand.NewSource(time.Now().UnixNano()))
+	currentSeed = time.Now().UnixNano()
+	rng = rand.New(rand.NewSource(currentSeed))
 }
 
 // SetSeed allows setting a specific seed for deterministic behavior (useful for testing)
 func SetSeed(seed int64) {
+	currentSeed = seed
 	rng = rand.New(rand.NewSource(seed))
+}
+
+// GetSeed returns the current random seed
+func GetSeed() int64 {
+	return currentSeed
 }
 
 type Suit int

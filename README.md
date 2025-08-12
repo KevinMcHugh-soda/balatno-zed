@@ -42,6 +42,9 @@ go run . -tui -seed 42
 go run . -load save.json
 ```
 
+# Automatic saving
+When you quit the game or it times out, the current state is saved to a timestamped JSON file like `2025-08-11T16:38:12Z.json`. The file will not be written if the process is interrupted with `Ctrl+C`.
+
 The JSON file should contain:
 
 ```json

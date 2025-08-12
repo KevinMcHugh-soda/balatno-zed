@@ -53,3 +53,40 @@ func TestLoadGameFromFile(t *testing.T) {
 		}
 	}
 }
+
+func TestSaveGameToFile(t *testing.T) {
+	SetSeed(456)
+	g := NewGame(NewLoggerEventHandler())
+
+	filename, err := g.Save()
+	if err != nil {
+		t.Fatalf("Save returned error: %v", err)
+	}
+	defer os.Remove(filename)
+
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		t.Fatalf("reading save file: %v", err)
+	}
+
+	var save saveFile
+	if err := json.Unmarshal(data, &save); err != nil {
+		t.Fatalf("unmarshal save: %v", err)
+	}
+
+	if save.Seed != 456 {
+		t.Errorf("seed = %d, want 456", save.Seed)
+	}
+	if save.CurrentAnte != g.currentAnte {
+		t.Errorf("ante = %d, want %d", save.CurrentAnte, g.currentAnte)
+	}
+	if save.CurrentBlind != g.currentBlind.String() {
+		t.Errorf("blind = %s, want %s", save.CurrentBlind, g.currentBlind.String())
+	}
+	if save.CurrentMoney != g.money {
+		t.Errorf("money = %d, want %d", save.CurrentMoney, g.money)
+	}
+	if len(save.CurrentJokers) != len(g.jokers) {
+		t.Errorf("jokers = %v, want %v", save.CurrentJokers, g.jokers)
+	}
+}

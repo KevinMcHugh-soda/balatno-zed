@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"os"
+	"time"
 )
 
 type saveFile struct {
@@ -68,4 +70,31 @@ func LoadGameFromFile(path string, handler EventHandler) (*Game, error) {
 
 	g.currentTarget = GetAnteRequirement(g.currentAnte, g.currentBlind)
 	return g, nil
+}
+
+// Save writes the current game state to a timestamped JSON file
+func (g *Game) Save() (string, error) {
+	save := saveFile{
+		SaveVersion:   1,
+		Seed:          GetSeed(),
+		CurrentAnte:   g.currentAnte,
+		CurrentBlind:  g.currentBlind.String(),
+		CurrentMoney:  g.money,
+		CurrentJokers: make([]string, len(g.jokers)),
+	}
+
+	for i, joker := range g.jokers {
+		save.CurrentJokers[i] = joker.Name
+	}
+
+	data, err := json.MarshalIndent(save, "", "  ")
+	if err != nil {
+		return "", err
+	}
+
+	filename := time.Now().UTC().Format(time.RFC3339) + ".json"
+	if err := os.WriteFile(filename, data, 0644); err != nil {
+		return "", err
+	}
+	return filename, nil
 }

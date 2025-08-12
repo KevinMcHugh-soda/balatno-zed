@@ -173,6 +173,7 @@ func (g *Game) Run() {
 	g.eventEmitter.EmitGameStarted()
 
 	gameRunning := true
+	shouldSave := false
 	for gameRunning && g.currentAnte <= MaxAntes {
 		for g.handsPlayed < MaxHands && g.totalScore < g.currentTarget {
 			// Update display mapping and emit current state
@@ -184,6 +185,7 @@ func (g *Game) Run() {
 			action, params, quit := g.eventEmitter.handler.GetPlayerAction(g.discardsUsed < g.maxDiscards())
 			if quit {
 				g.eventEmitter.EmitInfo("Thanks for playing!")
+				shouldSave = true
 				gameRunning = false
 				break
 			}
@@ -217,6 +219,14 @@ func (g *Game) Run() {
 
 	if gameRunning && g.currentAnte > MaxAntes {
 		g.eventEmitter.EmitEvent(VictoryEvent{})
+	}
+
+	if shouldSave {
+		if filename, err := g.Save(); err != nil {
+			g.eventEmitter.EmitError(fmt.Sprintf("Failed to save game: %v", err))
+		} else {
+			g.eventEmitter.EmitInfo(fmt.Sprintf("Game saved to %s", filename))
+		}
 	}
 
 	g.eventEmitter.handler.Close()
