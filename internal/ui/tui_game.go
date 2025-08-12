@@ -101,6 +101,9 @@ func renderCard(m TUIModel, card game.Card, isInSelectedArea bool) string {
 	if isInSelectedArea {
 		style = style.Bold(true).Background(lipgloss.Color("235"))
 	}
+	cardStr += card.Edition.Emoji()
+	cardStr += card.Sticker.Emoji()
+	cardStr += card.Print.Emoji()
 
 	return style.Render(cardStr)
 }

@@ -104,6 +104,20 @@ const (
 	Poly
 )
 
+func (e Edition) Emoji() string {
+	switch e {
+	case PlainEdition:
+		return ""
+	case Foil:
+		return "🪞"
+	case Holo:
+		return "✨"
+	case Poly:
+		return "🌈"
+	}
+	return ""
+}
+
 type Sticker int
 
 const (
@@ -112,6 +126,20 @@ const (
 	Purple
 	Blue
 )
+
+func (e Sticker) Emoji() string {
+	switch e {
+	case NoSticker:
+		return ""
+	case Red:
+		return "🔴"
+	case Purple:
+		return "🟣"
+	case Blue:
+		return "🔵"
+	}
+	return ""
+}
 
 // I don't actually remember what these are called
 type Print int
@@ -124,6 +152,24 @@ const (
 	Steel
 	Lucky
 )
+
+func (e Print) Emoji() string {
+	switch e {
+	case PlainPrint:
+		return ""
+	case PlusMult:
+		return "✕"
+	case PlusChips:
+		return "🍪"
+	case Glass:
+		return "🪟"
+	case Steel:
+		return "🧑‍🏭"
+	case Lucky:
+		return "🍀"
+	}
+	return ""
+}
 
 type Card struct {
 	Suit    Suit
