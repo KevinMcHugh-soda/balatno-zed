@@ -204,8 +204,7 @@ func (g *Game) Run() {
 		for g.handsPlayed < MaxHands && g.totalScore < g.currentTarget {
 			// Update display mapping and emit current state
 			g.updateDisplayToOriginalMapping()
-			g.eventEmitter.EmitGameState(g.currentAnte, g.currentBlind, g.currentTarget, g.totalScore,
-				MaxHands-g.handsPlayed, g.maxDiscards()-g.discardsUsed, g.money, g.jokers)
+			g.eventEmitter.EmitGameState(*g)
 			g.eventEmitter.EmitCardsDealt(g.playerCards, g.displayToOriginal, g.sortMode)
 
 			action, params, quit := g.eventEmitter.handler.GetPlayerAction(g.discardsUsed < g.maxDiscards())
@@ -936,6 +935,5 @@ func (g *Game) handleMoveJokerAction(params []string) {
 		return
 	}
 
-	g.eventEmitter.EmitGameState(g.currentAnte, g.currentBlind, g.currentTarget, g.totalScore,
-		MaxHands-g.handsPlayed, g.maxDiscards()-g.discardsUsed, g.money, g.jokers)
+	g.eventEmitter.EmitGameState(*g)
 }

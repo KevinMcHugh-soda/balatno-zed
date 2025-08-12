@@ -224,16 +224,16 @@ func (e *SimpleEventEmitter) EmitGameStarted() {
 	e.EmitEvent(GameStartedEvent{})
 }
 
-func (e *SimpleEventEmitter) EmitGameState(ante int, blind BlindType, target, score, hands, discards, money int, jokers []Joker) {
+func (e *SimpleEventEmitter) EmitGameState(g Game) {
 	e.EmitEvent(GameStateChangedEvent{
-		Ante:     ante,
-		Blind:    blind,
-		Target:   target,
-		Score:    score,
-		Hands:    hands,
-		Discards: discards,
-		Money:    money,
-		Jokers:   jokers,
+		Ante:     g.currentAnte,
+		Blind:    g.currentBlind,
+		Target:   g.currentTarget,
+		Score:    g.totalScore,
+		Hands:    MaxHands,        // TODO: Get the actual value from the game state
+		Discards: g.maxDiscards(), // TODO Get the actual value from the game state
+		Money:    g.money,
+		Jokers:   g.jokers,
 	})
 }
 
