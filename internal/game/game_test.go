@@ -158,7 +158,7 @@ func TestShowShopWithItems(t *testing.T) {
 // TestHandSizeWithJoker verifies that a joker can increase the hand size.
 func TestHandSizeWithJoker(t *testing.T) {
 	g := &Game{
-		jokers: []Joker{{Effect: AddHandSize, EffectMagnitude: 2}},
+		jokers: []Joker{{Effects: []JokerEffectConfig{{Effect: AddHandSize, EffectMagnitude: 2}}}},
 	}
 	if got := g.handSize(); got != InitialCards+2 {
 		t.Fatalf("expected hand size %d, got %d", InitialCards+2, got)
@@ -173,7 +173,7 @@ func TestDiscardLimitWithJoker(t *testing.T) {
 		deck:         deck,
 		deckIndex:    InitialCards,
 		playerCards:  deck[:InitialCards],
-		jokers:       []Joker{{Effect: AddDiscards, EffectMagnitude: 2}},
+		jokers:       []Joker{{Effects: []JokerEffectConfig{{Effect: AddDiscards, EffectMagnitude: 2}}}},
 		eventEmitter: NewEventEmitter(),
 	}
 	g.eventEmitter.SetEventHandler(handler)
