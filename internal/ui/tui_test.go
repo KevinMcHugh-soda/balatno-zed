@@ -175,3 +175,34 @@ func TestShoppingModeSecondItemSelection(t *testing.T) {
 		t.Fatalf("unexpected purchase response: %+v", resp)
 	}
 }
+
+// TestJokerReorder ensures joker reordering sends the correct action and updates state.
+func TestJokerReorder(t *testing.T) {
+	respChan := make(chan PlayerActionResponse, 1)
+	m := TUIModel{
+		gameState: game.GameStateChangedEvent{
+			Jokers: []game.Joker{{Name: "J1"}, {Name: "J2"}},
+		},
+		mode:                 GameMode{},
+		actionRequestPending: &PlayerActionRequest{ResponseChan: respChan},
+	}
+
+	model, _ := m.handleKeyPress(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+	m = *(model.(*TUIModel))
+	if _, ok := m.mode.(*JokerOrderMode); !ok {
+		t.Fatalf("expected mode to be JokerOrderMode")
+	}
+
+	model, _ = m.handleKeyPress(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'2'}})
+	m = *(model.(*TUIModel))
+
+	model, _ = m.handleKeyPress(tea.KeyMsg{Type: tea.KeyUp})
+	resp := <-respChan
+	if resp.Action != game.PlayerActionMoveJoker || len(resp.Params) != 2 || resp.Params[0] != "2" || resp.Params[1] != "up" {
+		t.Fatalf("unexpected response: %+v", resp)
+	}
+
+	if m.gameState.Jokers[0].Name != "J2" {
+		t.Fatalf("expected J2 to move up, got %v", m.gameState.Jokers)
+	}
+}

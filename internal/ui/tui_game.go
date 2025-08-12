@@ -184,6 +184,10 @@ func (gm GameMode) handleKeyPress(m *TUIModel, msg string) (tea.Model, tea.Cmd) 
 		m.handleResort()
 		return m, nil
 
+	case "j":
+		m.mode = NewJokerOrderMode(gm)
+		return m, nil
+
 	case "escape", "c":
 		m.selectedCards = []int{}
 		m.setStatusMessage("Selection cleared")
@@ -198,7 +202,7 @@ func (gm GameMode) toggleHelp() Mode {
 }
 
 func (gm GameMode) getControls() string {
-	return " | 1-7: select cards, Enter/P: play, D: discard, C: clear, R: resort, H: help, Q: quit"
+	return " | 1-7: select cards, Enter/P: play, D: discard, C: clear, R: resort, J: reorder jokers, H: help, Q: quit"
 }
 
 type GameHelpMode struct{}

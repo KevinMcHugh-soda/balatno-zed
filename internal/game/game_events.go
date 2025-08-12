@@ -10,14 +10,15 @@ type Event interface {
 type PlayerAction string
 
 const (
-	PlayerActionNone     = "none"
-	PlayerActionDiscard  = "discard"
-	PlayerActionPlay     = "play"
-	PlayerActionQuit     = "quit"
-	PlayerActionResort   = "resort"
-	PlayerActionExitShop = "exit_shop"
-	PlayerActionReroll   = "reroll"
-	PlayerActionBuy      = "buy"
+	PlayerActionNone      = "none"
+	PlayerActionDiscard   = "discard"
+	PlayerActionPlay      = "play"
+	PlayerActionQuit      = "quit"
+	PlayerActionResort    = "resort"
+	PlayerActionExitShop  = "exit_shop"
+	PlayerActionReroll    = "reroll"
+	PlayerActionBuy       = "buy"
+	PlayerActionMoveJoker = "move_joker"
 )
 
 // EventHandler processes game events and decides how to present them

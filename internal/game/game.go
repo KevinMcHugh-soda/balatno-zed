@@ -196,6 +196,8 @@ func (g *Game) Run() {
 				g.handleDiscardAction(params)
 			} else if action == PlayerActionResort {
 				g.handleResortAction()
+			} else if action == PlayerActionMoveJoker {
+				g.handleMoveJokerAction(params)
 			}
 		}
 
@@ -620,6 +622,8 @@ func (g *Game) showShop() {
 					Reason: fmt.Sprintf("Not enough money to reroll! Need $%d more.", g.rerollCost-g.money),
 				})
 			}
+		} else if action == PlayerActionMoveJoker {
+			g.handleMoveJokerAction(params)
 		} else if action == PlayerActionBuy {
 			choice := params[0]
 			if choice, err := strconv.Atoi(choice); err == nil && choice >= 1 && choice <= len(shopItems) {
@@ -753,6 +757,8 @@ func (g *Game) showShopWithItems(availableJokers []Joker, shopItems []Joker) {
 					Reason: fmt.Sprintf("Not enough money to reroll! Need $%d more.", g.rerollCost-g.money),
 				})
 			}
+		} else if action == PlayerActionMoveJoker {
+			g.handleMoveJokerAction(params)
 		} else if action == PlayerActionBuy {
 			choice := params[0]
 			if choice, err := strconv.Atoi(choice); err == nil && choice >= 1 && choice <= len(shopItems) {
@@ -848,4 +854,56 @@ func (g *Game) handleResortAction() {
 	}
 	// Update the display mapping with new sort order
 	g.updateDisplayToOriginalMapping()
+}
+
+// handleMoveJokerAction moves a joker up or down in the player's joker list
+func (g *Game) handleMoveJokerAction(params []string) {
+	if len(params) != 2 {
+		g.eventEmitter.EmitEvent(InvalidActionEvent{
+			Action: "move_joker",
+			Reason: "Usage: move_joker <index> <up|down>",
+		})
+		return
+	}
+
+	idx, err := strconv.Atoi(params[0])
+	if err != nil || idx < 1 || idx > len(g.jokers) {
+		g.eventEmitter.EmitEvent(InvalidActionEvent{
+			Action: "move_joker",
+			Reason: fmt.Sprintf("Invalid joker number: %s", params[0]),
+		})
+		return
+	}
+
+	direction := params[1]
+	i := idx - 1
+	switch direction {
+	case "up":
+		if i == 0 {
+			g.eventEmitter.EmitEvent(InvalidActionEvent{
+				Action: "move_joker",
+				Reason: "Joker already at top",
+			})
+			return
+		}
+		g.jokers[i-1], g.jokers[i] = g.jokers[i], g.jokers[i-1]
+	case "down":
+		if i >= len(g.jokers)-1 {
+			g.eventEmitter.EmitEvent(InvalidActionEvent{
+				Action: "move_joker",
+				Reason: "Joker already at bottom",
+			})
+			return
+		}
+		g.jokers[i], g.jokers[i+1] = g.jokers[i+1], g.jokers[i]
+	default:
+		g.eventEmitter.EmitEvent(InvalidActionEvent{
+			Action: "move_joker",
+			Reason: fmt.Sprintf("Unknown direction: %s", direction),
+		})
+		return
+	}
+
+	g.eventEmitter.EmitGameState(g.currentAnte, g.currentBlind, g.currentTarget, g.totalScore,
+		MaxHands-g.handsPlayed, g.maxDiscards()-g.discardsUsed, g.money, g.jokers)
 }
