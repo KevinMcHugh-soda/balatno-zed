@@ -4,7 +4,7 @@ import "testing"
 
 // TestCalculateJokerRewards verifies AddMoney joker rewards at blind end.
 func TestCalculateJokerRewards(t *testing.T) {
-	j := Joker{OnBlindEnd: func() int { return 4 }}
+	j := Joker{Effects: []JokerEffectConfig{{Effect: AddMoney, EffectMagnitude: 4}}}
 	if got := CalculateJokerRewards([]Joker{j}); got != 4 {
 		t.Fatalf("expected 4, got %d", got)
 	}
@@ -12,10 +12,10 @@ func TestCalculateJokerRewards(t *testing.T) {
 
 // TestCalculateJokerHandBonus verifies chip and multiplier bonuses from jokers.
 func TestCalculateJokerHandBonus(t *testing.T) {
-	chipCfg := JokerConfig{Name: "Chip", Effect: AddChips, EffectMagnitude: 30, HandMatchingRule: ContainsPair}
+	chipCfg := JokerConfig{Name: "Chip", Effects: []JokerEffectConfig{{Effect: AddChips, EffectMagnitude: 30, HandMatchingRule: ContainsPair}}}
 	chipJoker := createJokerFromConfig(chipCfg)
 
-	multCfg := JokerConfig{Name: "Mult", Effect: AddMult, EffectMagnitude: 5, HandMatchingRule: ContainsPair}
+	multCfg := JokerConfig{Name: "Mult", Effects: []JokerEffectConfig{{Effect: AddMult, EffectMagnitude: 5, HandMatchingRule: ContainsPair}}}
 	multJoker := createJokerFromConfig(multCfg)
 
 	chips, mult := CalculateJokerHandBonus([]Joker{chipJoker}, "Pair", []Card{})
@@ -37,7 +37,7 @@ func TestCalculateJokerHandBonus(t *testing.T) {
 
 // TestCardMatchingRule verifies bonuses based on individual card matches.
 func TestCardMatchingRule(t *testing.T) {
-	cfg := JokerConfig{Name: "Ace Bonus", Effect: AddChips, EffectMagnitude: 10, CardMatchingRule: CardIsAce}
+	cfg := JokerConfig{Name: "Ace Bonus", Effects: []JokerEffectConfig{{Effect: AddChips, EffectMagnitude: 10, CardMatchingRule: CardIsAce}}}
 	joker := createJokerFromConfig(cfg)
 
 	hand := []Card{{Rank: Ace, Suit: Hearts}, {Rank: Ace, Suit: Spades}, {Rank: Two, Suit: Clubs}}
@@ -55,9 +55,9 @@ func TestCardMatchingRule(t *testing.T) {
 
 // TestReplayFaceCards verifies that ReplayCard jokers process matching cards twice.
 func TestReplayFaceCards(t *testing.T) {
-	replayCfg := JokerConfig{Name: "Face Dancer", Effect: ReplayCard, CardMatchingRule: CardIsFace}
+	replayCfg := JokerConfig{Name: "Face Dancer", Effects: []JokerEffectConfig{{Effect: ReplayCard, CardMatchingRule: CardIsFace}}}
 	replayJoker := createJokerFromConfig(replayCfg)
-	bonusCfg := JokerConfig{Name: "Face Bonus", Effect: AddChips, EffectMagnitude: 10, CardMatchingRule: CardIsFace}
+	bonusCfg := JokerConfig{Name: "Face Bonus", Effects: []JokerEffectConfig{{Effect: AddChips, EffectMagnitude: 10, CardMatchingRule: CardIsFace}}}
 	bonusJoker := createJokerFromConfig(bonusCfg)
 
 	cards := []Card{{Rank: Jack, Suit: Hearts}, {Rank: Five, Suit: Clubs}}
@@ -73,5 +73,21 @@ func TestReplayFaceCards(t *testing.T) {
 
 	if finalScore != 50 {
 		t.Fatalf("expected final score 50, got %d", finalScore)
+	}
+}
+
+// TestCompositeJoker verifies that multiple effects on a single joker stack.
+func TestCompositeJoker(t *testing.T) {
+	cfg := JokerConfig{
+		Name: "Combo",
+		Effects: []JokerEffectConfig{
+			{Effect: AddChips, EffectMagnitude: 10, HandMatchingRule: ContainsPair},
+			{Effect: AddMult, EffectMagnitude: 2, HandMatchingRule: ContainsPair},
+		},
+	}
+	joker := createJokerFromConfig(cfg)
+	chips, mult := CalculateJokerHandBonus([]Joker{joker}, "Pair", []Card{})
+	if chips != 10 || mult != 2 {
+		t.Fatalf("expected chips=10 mult=2, got chips=%d mult=%d", chips, mult)
 	}
 }

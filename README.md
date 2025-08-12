@@ -194,14 +194,16 @@ Two Pair,20,2
 jokers:
   - name: "The Golden Joker"
     value: 6
-    effect: "AddMoney"
-    effect_magnitude: 4
-    hand_matching_rule: "None"
-    card_matching_rule: "None"
     description: "Earn $4 at the end of each Blind"
+    effects:
+      - effect: "AddMoney"
+        effect_magnitude: 4
+        hand_matching_rule: "None"
+        card_matching_rule: "None"
 ```
 - **YAML format** for complex joker configurations
 - **Effect types**: `AddMoney`, `AddChips`, `AddMult`, `ReplayCard`
+- **Composite effects**: Combine multiple effects under `effects`
 - **Hand matching**: Trigger jokers based on hand types (pairs, straights, etc.)
 - **Card matching**: Award bonuses per matching card (Aces, Spades, face cards, etc.)
 - **Runtime loading** with fallback to defaults

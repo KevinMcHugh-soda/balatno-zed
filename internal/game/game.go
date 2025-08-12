@@ -87,8 +87,10 @@ type Game struct {
 func (g *Game) handSize() int {
 	size := InitialCards
 	for _, j := range g.jokers {
-		if j.Effect == AddHandSize {
-			size += j.EffectMagnitude
+		for _, eff := range j.Effects {
+			if eff.Effect == AddHandSize {
+				size += eff.EffectMagnitude
+			}
 		}
 	}
 	return size
@@ -98,8 +100,10 @@ func (g *Game) handSize() int {
 func (g *Game) maxDiscards() int {
 	max := MaxDiscards
 	for _, j := range g.jokers {
-		if j.Effect == AddDiscards {
-			max += j.EffectMagnitude
+		for _, eff := range j.Effects {
+			if eff.Effect == AddDiscards {
+				max += eff.EffectMagnitude
+			}
 		}
 	}
 	return max
