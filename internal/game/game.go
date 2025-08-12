@@ -707,6 +707,7 @@ func (g *Game) showShopWithItems(availableJokers []Joker, shopItems []Joker) {
 		}
 
 		if action == PlayerActionExitShop {
+			g.eventEmitter.EmitEvent(ShopClosedEvent{})
 			return
 		} else if action == PlayerActionReroll {
 			if g.money >= g.rerollCost {
