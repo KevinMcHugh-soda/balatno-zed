@@ -37,14 +37,22 @@ const (
 )
 
 // JokerConfig represents a joker configuration from YAML
-type JokerConfig struct {
-	Name             string           `yaml:"name"`
-	Value            int              `yaml:"value"`
-	Rarity           string           `yaml:"rarity"`
+type JokerEffectConfig struct {
 	Effect           JokerEffect      `yaml:"effect"`
 	EffectMagnitude  int              `yaml:"effect_magnitude"`
 	HandMatchingRule HandMatchingRule `yaml:"hand_matching_rule"`
-	Description      string           `yaml:"description"`
+}
+
+// JokerConfig represents a joker configuration from YAML
+type JokerConfig struct {
+	Name             string              `yaml:"name"`
+	Value            int                 `yaml:"value"`
+	Rarity           string              `yaml:"rarity"`
+	Effect           JokerEffect         `yaml:"effect,omitempty"`
+	EffectMagnitude  int                 `yaml:"effect_magnitude,omitempty"`
+	HandMatchingRule HandMatchingRule    `yaml:"hand_matching_rule,omitempty"`
+	Effects          []JokerEffectConfig `yaml:"effects,omitempty"`
+	Description      string              `yaml:"description"`
 }
 
 // JokersYAML represents the root YAML structure
@@ -54,14 +62,12 @@ type JokersYAML struct {
 
 // Joker represents a joker card that modifies gameplay
 type Joker struct {
-	Name             string
-	Description      string
-	Price            int
-	Effect           JokerEffect
-	EffectMagnitude  int
-	HandMatchingRule HandMatchingRule
-	OnBlindEnd       func() int              // Returns money earned at end of blind
-	OnHandScoring    func(string) (int, int) // Returns (chips, mult) bonus for hand type
+	Name          string
+	Description   string
+	Price         int
+	Effects       []JokerEffectConfig
+	OnBlindEnd    func() int              // Returns money earned at end of blind
+	OnHandScoring func(string) (int, int) // Returns (chips, mult) bonus for hand type
 }
 
 var jokerConfigs []JokerConfig
@@ -140,33 +146,64 @@ func setDefaultJokerConfigs() {
 // createJokerFromConfig creates a Joker instance from a JokerConfig
 func createJokerFromConfig(config JokerConfig) Joker {
 	joker := Joker{
-		Name:             config.Name,
-		Description:      config.Description,
-		Price:            config.Value,
-		Effect:           config.Effect,
-		EffectMagnitude:  config.EffectMagnitude,
-		HandMatchingRule: config.HandMatchingRule,
+		Name:        config.Name,
+		Description: config.Description,
+		Price:       config.Value,
 	}
 
-	// Set up effect functions based on effect type
-	switch config.Effect {
-	case AddMoney:
-		joker.OnBlindEnd = func() int {
-			return config.EffectMagnitude
+	var effects []JokerEffectConfig
+	if len(config.Effects) > 0 {
+		effects = config.Effects
+	} else if config.Effect != "" {
+		effects = []JokerEffectConfig{{
+			Effect:           config.Effect,
+			EffectMagnitude:  config.EffectMagnitude,
+			HandMatchingRule: config.HandMatchingRule,
+		}}
+	}
+	joker.Effects = effects
+
+	hasMoney := false
+	hasScoring := false
+	for _, e := range effects {
+		if e.Effect == AddMoney {
+			hasMoney = true
 		}
-	case AddChips, AddMult:
-		joker.OnHandScoring = func(handType string) (int, int) {
-			if handMatchesRule(handType, config.HandMatchingRule) {
-				if config.Effect == AddChips {
-					return config.EffectMagnitude, 0
-				} else {
-					return 0, config.EffectMagnitude
+		if e.Effect == AddChips || e.Effect == AddMult {
+			hasScoring = true
+		}
+	}
+
+	if hasMoney {
+		effs := effects
+		joker.OnBlindEnd = func() int {
+			total := 0
+			for _, e := range effs {
+				if e.Effect == AddMoney {
+					total += e.EffectMagnitude
 				}
 			}
-			return 0, 0
+			return total
 		}
-	case AddHandSize, AddDiscards:
-		// Passive effects handled directly in game logic
+	}
+
+	if hasScoring {
+		effs := effects
+		joker.OnHandScoring = func(handType string) (int, int) {
+			chips := 0
+			mult := 0
+			for _, e := range effs {
+				if handMatchesRule(handType, e.HandMatchingRule) {
+					switch e.Effect {
+					case AddChips:
+						chips += e.EffectMagnitude
+					case AddMult:
+						mult += e.EffectMagnitude
+					}
+				}
+			}
+			return chips, mult
+		}
 	}
 
 	return joker
@@ -269,7 +306,7 @@ func GetGoldenJoker() Joker {
 		Name:        "The Golden Joker",
 		Description: "Earn $4 at the end of each Blind",
 		Price:       6,
-		Effect:      AddMoney,
+		Effects:     []JokerEffectConfig{{Effect: AddMoney, EffectMagnitude: 4, HandMatchingRule: None}},
 		OnBlindEnd: func() int {
 			return 4
 		},
@@ -333,8 +370,11 @@ func FormatJokersList(jokers []Joker) string {
 func GetJokersByEffect(jokers []Joker, effect JokerEffect) []Joker {
 	var filtered []Joker
 	for _, joker := range jokers {
-		if joker.Effect == effect {
-			filtered = append(filtered, joker)
+		for _, e := range joker.Effects {
+			if e.Effect == effect {
+				filtered = append(filtered, joker)
+				break
+			}
 		}
 	}
 	return filtered

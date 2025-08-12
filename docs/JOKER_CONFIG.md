@@ -10,11 +10,26 @@ This document explains how to configure jokers in Balatro CLI using the YAML-bas
 jokers:
   - name: "Joker Name"
     value: 6                    # Price in shop
-    rarity: "Common"            # Currently unused, for future expansion  
+    rarity: "Common"            # Currently unused, for future expansion
     effect: "AddChips"          # Effect type
     effect_magnitude: 30        # Strength of effect
     hand_matching_rule: "ContainsPair"  # When to trigger
     description: "Description shown in shop"
+
+  # Composite jokers can specify multiple effects
+  - name: "Combo"
+    value: 8
+    description: "Earn $2 and +10 chips/+3 mult for pairs"
+    effects:
+      - effect: "AddMoney"
+        effect_magnitude: 2
+        hand_matching_rule: "None"
+      - effect: "AddChips"
+        effect_magnitude: 10
+        hand_matching_rule: "ContainsPair"
+      - effect: "AddMult"
+        effect_magnitude: 3
+        hand_matching_rule: "ContainsPair"
 ```
 
 ## 🎭 Effect Types

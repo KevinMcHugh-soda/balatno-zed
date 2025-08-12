@@ -34,3 +34,26 @@ func TestCalculateJokerHandBonus(t *testing.T) {
 		t.Fatalf("expected no bonus for non-matching hand, got chips=%d mult=%d", chips, mult)
 	}
 }
+
+// TestCompositeJoker verifies that a joker can apply multiple effects.
+func TestCompositeJoker(t *testing.T) {
+	cfg := JokerConfig{
+		Name: "Combo",
+		Effects: []JokerEffectConfig{
+			{Effect: AddChips, EffectMagnitude: 10, HandMatchingRule: ContainsPair},
+			{Effect: AddMult, EffectMagnitude: 3, HandMatchingRule: ContainsPair},
+			{Effect: AddMoney, EffectMagnitude: 2, HandMatchingRule: None},
+		},
+	}
+	j := createJokerFromConfig(cfg)
+
+	chips, mult := CalculateJokerHandBonus([]Joker{j}, "Pair")
+	if chips != 10 || mult != 3 {
+		t.Fatalf("expected chips=10 mult=3, got chips=%d mult=%d", chips, mult)
+	}
+
+	reward := CalculateJokerRewards([]Joker{j})
+	if reward != 2 {
+		t.Fatalf("expected money reward 2, got %d", reward)
+	}
+}

@@ -201,6 +201,24 @@ jokers:
 - **Hand matching**: Trigger jokers based on hand types (pairs, straights, etc.)
 - **Runtime loading** with fallback to defaults
 
+Composite jokers can list multiple effects:
+
+```yaml
+- name: "Combo"
+  value: 8
+  description: "Earn $2 and +10 chips/+3 mult for pairs"
+  effects:
+    - effect: "AddMoney"
+      effect_magnitude: 2
+      hand_matching_rule: "None"
+    - effect: "AddChips"
+      effect_magnitude: 10
+      hand_matching_rule: "ContainsPair"
+    - effect: "AddMult"
+      effect_magnitude: 3
+      hand_matching_rule: "ContainsPair"
+```
+
 ### Making Balance Changes
 1. **Edit CSV/YAML files** with any text editor
 2. **Run the game** - changes load automatically
