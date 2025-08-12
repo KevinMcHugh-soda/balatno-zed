@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"strings"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -204,5 +205,27 @@ func TestJokerReorder(t *testing.T) {
 
 	if m.gameState.Jokers[0].Name != "J2" {
 		t.Fatalf("expected J2 to move up, got %v", m.gameState.Jokers)
+	}
+}
+
+// TestBossBlindNameInGameInfo ensures boss blind name appears in the game info box.
+func TestBossBlindNameInGameInfo(t *testing.T) {
+	m := TUIModel{
+		gameState: game.GameStateChangedEvent{
+			Ante:     1,
+			Blind:    game.BossBlind,
+			Target:   100,
+			Score:    0,
+			Hands:    4,
+			Discards: 3,
+			Money:    0,
+			Boss:     "Hearts score zero",
+		},
+		mode:  GameMode{},
+		cards: []game.Card{},
+	}
+	content := GameMode{}.renderContent(m)
+	if !strings.Contains(content, "Boss Blind: Hearts score zero") {
+		t.Fatalf("boss blind name not found in game info: %s", content)
 	}
 }
