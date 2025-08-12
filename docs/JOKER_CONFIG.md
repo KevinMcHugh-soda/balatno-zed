@@ -13,7 +13,8 @@ jokers:
     rarity: "Common"            # Currently unused, for future expansion  
     effect: "AddChips"          # Effect type
     effect_magnitude: 30        # Strength of effect
-    hand_matching_rule: "ContainsPair"  # When to trigger
+    hand_matching_rule: "ContainsPair"  # When to trigger based on hand type
+    card_matching_rule: "IsAce"         # (Optional) bonus per matching card
     description: "Description shown in shop"
 ```
 
@@ -135,6 +136,31 @@ Triggers only on Royal Flush.
 
 ```yaml
 hand_matching_rule: "ContainsRoyalFlush"
+```
+
+## 🂠 Card Matching Rules
+
+Card matching rules award the joker's effect magnitude for each card in the played hand that matches the rule. When a `card_matching_rule` is present, the `hand_matching_rule` is ignored for scoring purposes.
+
+### `IsAce`
+Triggers for each Ace in the played hand.
+
+```yaml
+card_matching_rule: "IsAce"
+```
+
+### `IsSpade`
+Triggers for each Spade in the played hand.
+
+```yaml
+card_matching_rule: "IsSpade"
+```
+
+### `IsFace`
+Triggers for each face card (J, Q, K).
+
+```yaml
+card_matching_rule: "IsFace"
 ```
 
 ## 📊 Example Configurations

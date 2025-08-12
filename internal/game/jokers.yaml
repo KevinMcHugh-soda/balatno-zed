@@ -118,3 +118,11 @@ jokers:
     effect_magnitude: 30
     hand_matching_rule: "ContainsFourOfAKind"
     description: "+30 Mult if played hand contains Four of a Kind"
+
+  - name: "Ace in the Hole"
+    value: 8
+    rarity: "Common"
+    effect: "AddChips"
+    effect_magnitude: 20
+    card_matching_rule: "IsAce"
+    description: "+20 Chips for each Ace played"

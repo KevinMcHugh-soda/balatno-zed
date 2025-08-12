@@ -294,7 +294,7 @@ func (g *Game) handlePlayAction(params []string) {
 	evaluator, _, cardValues, baseScore := EvaluateHand(hand)
 
 	// Calculate joker bonuses
-	jokerChips, jokerMult := CalculateJokerHandBonus(g.jokers, evaluator.Name())
+	jokerChips, jokerMult := CalculateJokerHandBonus(g.jokers, evaluator.Name(), selectedCards)
 
 	// Apply joker bonuses to final score
 	finalBaseScore := baseScore + jokerChips

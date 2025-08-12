@@ -18,19 +18,37 @@ func TestCalculateJokerHandBonus(t *testing.T) {
 	multCfg := JokerConfig{Name: "Mult", Effect: AddMult, EffectMagnitude: 5, HandMatchingRule: ContainsPair}
 	multJoker := createJokerFromConfig(multCfg)
 
-	chips, mult := CalculateJokerHandBonus([]Joker{chipJoker}, "Pair")
+	chips, mult := CalculateJokerHandBonus([]Joker{chipJoker}, "Pair", []Card{})
 	if chips != 30 || mult != 0 {
 		t.Fatalf("expected 30 chips bonus, got chips=%d mult=%d", chips, mult)
 	}
 
-	chips, mult = CalculateJokerHandBonus([]Joker{multJoker}, "Pair")
+	chips, mult = CalculateJokerHandBonus([]Joker{multJoker}, "Pair", []Card{})
 	if chips != 0 || mult != 5 {
 		t.Fatalf("expected mult bonus 5, got chips=%d mult=%d", chips, mult)
 	}
 
 	// Non-matching hand should yield no bonus
-	chips, mult = CalculateJokerHandBonus([]Joker{chipJoker}, "High Card")
+	chips, mult = CalculateJokerHandBonus([]Joker{chipJoker}, "High Card", []Card{})
 	if chips != 0 || mult != 0 {
 		t.Fatalf("expected no bonus for non-matching hand, got chips=%d mult=%d", chips, mult)
+	}
+}
+
+// TestCardMatchingRule verifies bonuses based on individual card matches.
+func TestCardMatchingRule(t *testing.T) {
+	cfg := JokerConfig{Name: "Ace Bonus", Effect: AddChips, EffectMagnitude: 10, CardMatchingRule: CardIsAce}
+	joker := createJokerFromConfig(cfg)
+
+	hand := []Card{{Rank: Ace, Suit: Hearts}, {Rank: Ace, Suit: Spades}, {Rank: Two, Suit: Clubs}}
+	chips, mult := CalculateJokerHandBonus([]Joker{joker}, "High Card", hand)
+	if chips != 20 || mult != 0 {
+		t.Fatalf("expected 20 chips bonus, got chips=%d mult=%d", chips, mult)
+	}
+
+	hand = []Card{{Rank: Two, Suit: Clubs}}
+	chips, mult = CalculateJokerHandBonus([]Joker{joker}, "High Card", hand)
+	if chips != 0 || mult != 0 {
+		t.Fatalf("expected no bonus without matching cards, got chips=%d mult=%d", chips, mult)
 	}
 }
