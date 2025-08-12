@@ -515,6 +515,9 @@ func (g *Game) showShop() {
 	for _, joker := range shopItems {
 		if joker.Name != "" {
 			items = append(items, NewShopItemData(joker, g.money))
+		} else {
+			// Preserve empty slots so indices remain stable
+			items = append(items, ShopItemData{})
 		}
 	}
 
@@ -558,6 +561,8 @@ func (g *Game) showShop() {
 				for _, joker := range shopItems {
 					if joker.Name != "" {
 						newItems = append(newItems, NewShopItemData(joker, g.money))
+					} else {
+						newItems = append(newItems, ShopItemData{})
 					}
 				}
 
@@ -637,6 +642,9 @@ func (g *Game) showShopWithItems(availableJokers []Joker, shopItems []Joker) {
 	for _, joker := range shopItems {
 		if joker.Name != "" {
 			items = append(items, NewShopItemData(joker, g.money))
+		} else {
+			// Keep placeholder to maintain indexing
+			items = append(items, ShopItemData{})
 		}
 	}
 
@@ -686,6 +694,8 @@ func (g *Game) showShopWithItems(availableJokers []Joker, shopItems []Joker) {
 				for _, joker := range shopItems {
 					if joker.Name != "" {
 						newItems = append(newItems, NewShopItemData(joker, g.money))
+					} else {
+						newItems = append(newItems, ShopItemData{})
 					}
 				}
 
