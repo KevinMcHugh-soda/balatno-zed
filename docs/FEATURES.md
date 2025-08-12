@@ -69,7 +69,7 @@ Buy (1) The Golden Joker, or (s)kip shop:
 - **Ownership Check**: Won't offer jokers the player already owns
 - **Current Inventory**: Displays owned jokers clearly
 - **Simple Input**: Type `1` to buy, anything else to skip
-- **Joker Reordering**: Press `j` to reorder owned jokers
+- **Joker Reordering**: Press `j` to reorder owned jokers, `s` to sell the selected joker for half price
 
 ---
 

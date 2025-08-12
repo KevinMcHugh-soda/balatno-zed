@@ -1,6 +1,9 @@
 package game
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 // testEventHandler is a minimal EventHandler implementation for testing.
 type testEventHandler struct {
@@ -152,6 +155,36 @@ func TestShowShopWithItems(t *testing.T) {
 	}
 	if !closed {
 		t.Fatalf("expected ShopClosedEvent to be emitted on exit")
+	}
+}
+
+// TestHandleSellJokerAction verifies selling a joker refunds half its price and removes it.
+func TestHandleSellJokerAction(t *testing.T) {
+	handler := &testEventHandler{}
+	g := &Game{
+		money:        10,
+		jokers:       []Joker{{Name: "J1", Price: 6}, {Name: "J2", Price: 8}},
+		eventEmitter: NewEventEmitter(),
+	}
+	g.eventEmitter.SetEventHandler(handler)
+
+	g.handleSellJokerAction([]string{"1"})
+
+	if g.money != 13 {
+		t.Fatalf("expected money to be 13 after sale, got %d", g.money)
+	}
+	if len(g.jokers) != 1 || g.jokers[0].Name != "J2" {
+		t.Fatalf("expected remaining joker to be J2, got %v", g.jokers)
+	}
+
+	soldMsg := false
+	for _, e := range handler.events {
+		if m, ok := e.(MessageEvent); ok && strings.Contains(m.Message, "Sold J1") {
+			soldMsg = true
+		}
+	}
+	if !soldMsg {
+		t.Fatalf("expected MessageEvent for sold joker")
 	}
 }
 
