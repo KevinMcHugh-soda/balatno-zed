@@ -203,6 +203,10 @@ jokers:
 - **Card matching**: Award bonuses per matching card (Aces, Spades, face cards, etc.)
 - **Runtime loading** with fallback to defaults
 
+The game searches upward from the current working directory to locate
+these configuration files, so it can run from any subdirectory of the
+repository.
+
 ### Making Balance Changes
 1. **Edit CSV/YAML files** with any text editor
 2. **Run the game** - changes load automatically

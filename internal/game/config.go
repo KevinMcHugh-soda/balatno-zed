@@ -3,7 +3,6 @@ package game
 import (
 	"encoding/csv"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strconv"
 )
@@ -54,7 +53,7 @@ func LoadConfig() error {
 
 // loadAnteRequirements loads ante requirements from CSV file
 func (c *Config) loadAnteRequirements() error {
-	file, err := os.Open(filepath.Join("internal", "game", "ante_requirements.csv"))
+	file, err := openGameFile(filepath.Join("internal", "game", "ante_requirements.csv"))
 	if err != nil {
 		return err
 	}
@@ -104,7 +103,7 @@ func (c *Config) loadAnteRequirements() error {
 
 // loadHandScores loads hand scores from CSV file
 func (c *Config) loadHandScores() error {
-	file, err := os.Open(filepath.Join("internal", "game", "hand_scores.csv"))
+	file, err := openGameFile(filepath.Join("internal", "game", "hand_scores.csv"))
 	if err != nil {
 		return err
 	}
