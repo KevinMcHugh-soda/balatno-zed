@@ -44,10 +44,23 @@ func (ms ShoppingMode) renderContent(m TUIModel) string {
 
 	jokerDisplay := gameInfoStyle.Height(len(jokerViews)).Render(lipgloss.JoinVertical(lipgloss.Top, jokerViews...))
 
+	// Render currently owned jokers below the shop items
+	var ownedViews []string
+	if len(m.gameState.Jokers) == 0 {
+		ownedViews = append(ownedViews, "🃏 Jokers: None")
+	} else {
+		ownedViews = append(ownedViews, "🃏 Jokers:")
+		for _, j := range m.gameState.Jokers {
+			ownedViews = append(ownedViews, renderOwnedJoker(j))
+		}
+	}
+	ownedDisplay := gameInfoStyle.Height(len(ownedViews)).Render(lipgloss.JoinVertical(lipgloss.Left, ownedViews...))
+
 	return lipgloss.JoinVertical(
 		lipgloss.Left,
 		gameInfoBox,
 		jokerDisplay,
+		ownedDisplay,
 	)
 }
 

@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"strings"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -204,5 +205,20 @@ func TestJokerReorder(t *testing.T) {
 
 	if m.gameState.Jokers[0].Name != "J2" {
 		t.Fatalf("expected J2 to move up, got %v", m.gameState.Jokers)
+	}
+}
+
+// TestShoppingModeRendersOwnedJokers ensures owned jokers are shown in shop mode.
+func TestShoppingModeRendersOwnedJokers(t *testing.T) {
+	m := TUIModel{
+		gameState: game.GameStateChangedEvent{
+			Jokers: []game.Joker{{Name: "J1", Description: "desc"}},
+		},
+		shopInfo: &game.ShopOpenedEvent{Money: 10, RerollCost: 5},
+	}
+	sm := ShoppingMode{}
+	output := sm.renderContent(m)
+	if !strings.Contains(output, "J1: desc") {
+		t.Fatalf("expected owned joker to be rendered, got %s", output)
 	}
 }
