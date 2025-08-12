@@ -60,7 +60,15 @@ func (gm *ShoppingMode) handleKeyPress(m *TUIModel, msg string) (tea.Model, tea.
 		// select a shop item
 		i := int(msg[0] - '0')
 
+		if i-1 >= len(m.shopInfo.Items) {
+			m.setStatusMessage("That slot is empty!")
+			return m, nil
+		}
 		item := m.shopInfo.Items[i-1]
+		if item.Name == "" {
+			m.setStatusMessage("That slot is empty!")
+			return m, nil
+		}
 		if !item.CanAfford {
 			m.setStatusMessage("Not enough money!")
 			return m, nil
@@ -71,7 +79,15 @@ func (gm *ShoppingMode) handleKeyPress(m *TUIModel, msg string) (tea.Model, tea.
 
 	case "enter":
 		if gm.selectedItem != nil {
-			item := m.shopInfo.Items[*gm.selectedItem]
+			if *gm.selectedItem-1 >= len(m.shopInfo.Items) {
+				m.setStatusMessage("That slot is empty!")
+				return m, nil
+			}
+			item := m.shopInfo.Items[*gm.selectedItem-1]
+			if item.Name == "" {
+				m.setStatusMessage("That slot is empty!")
+				return m, nil
+			}
 			if !item.CanAfford {
 				m.setStatusMessage("Not enough money!")
 				return m, nil
@@ -106,6 +122,9 @@ func (gm *ShoppingMode) handleKeyPress(m *TUIModel, msg string) (tea.Model, tea.
 }
 
 func renderJoker(m TUIModel, joker game.ShopItemData) string {
+	if joker.Name == "" {
+		return ""
+	}
 	cost := fmt.Sprintf("%d", joker.Cost)
 	if joker.Cost > m.gameState.Money {
 		cost = lipgloss.NewStyle().Foreground(lipgloss.Color("203")).Render(cost)

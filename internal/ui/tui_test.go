@@ -87,7 +87,7 @@ func TestHelpToggle(t *testing.T) {
 func TestShoppingModeActions(t *testing.T) {
 	// Prepare a model with one affordable item and a pending request
 	respChan := make(chan PlayerActionResponse, 1)
-	selected := 0
+	selected := 1
 	m := TUIModel{
 		gameState:            game.GameStateChangedEvent{Money: 10},
 		shopInfo:             &game.ShopOpenedEvent{Money: 10, RerollCost: 5, Items: []game.ShopItemData{{Name: "J1", Cost: 5, Description: "", CanAfford: true}}},
@@ -98,7 +98,7 @@ func TestShoppingModeActions(t *testing.T) {
 	// Purchasing selected item
 	model, _ := m.handleKeyPress(tea.KeyMsg{Type: tea.KeyEnter})
 	resp := <-respChan
-	if resp.Action != game.PlayerActionBuy || len(resp.Params) != 1 || resp.Params[0] != "0" {
+	if resp.Action != game.PlayerActionBuy || len(resp.Params) != 1 || resp.Params[0] != "1" {
 		t.Fatalf("unexpected purchase response: %+v", resp)
 	}
 
@@ -135,5 +135,43 @@ func TestShoppingModeActions(t *testing.T) {
 	resp = <-respChan
 	if resp.Action != game.PlayerActionExitShop {
 		t.Fatalf("unexpected exit response: %+v", resp)
+	}
+}
+
+// TestShoppingModeEmptySlotSelection ensures selecting an empty slot is handled gracefully.
+func TestShoppingModeEmptySlotSelection(t *testing.T) {
+	m := TUIModel{
+		gameState: game.GameStateChangedEvent{Money: 10},
+		shopInfo:  &game.ShopOpenedEvent{Money: 10, RerollCost: 5, Items: []game.ShopItemData{{}, {Name: "J2", Cost: 5, Description: "", CanAfford: true}}},
+		mode:      &ShoppingMode{},
+	}
+
+	model, _ := m.handleKeyPress(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'1'}})
+	m = *(model.(*TUIModel))
+	sm := m.mode.(*ShoppingMode)
+	if sm.selectedItem != nil {
+		t.Fatalf("expected no selection when choosing empty slot")
+	}
+	if m.statusMessage != "That slot is empty!" {
+		t.Fatalf("unexpected status message: %s", m.statusMessage)
+	}
+}
+
+// TestShoppingModeSecondItemSelection verifies purchasing the second item when the first is empty.
+func TestShoppingModeSecondItemSelection(t *testing.T) {
+	respChan := make(chan PlayerActionResponse, 1)
+	m := TUIModel{
+		gameState:            game.GameStateChangedEvent{Money: 10},
+		shopInfo:             &game.ShopOpenedEvent{Money: 10, RerollCost: 5, Items: []game.ShopItemData{{}, {Name: "J2", Cost: 5, Description: "", CanAfford: true}}},
+		mode:                 &ShoppingMode{},
+		actionRequestPending: &PlayerActionRequest{ResponseChan: respChan},
+	}
+
+	model, _ := m.handleKeyPress(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'2'}})
+	m = *(model.(*TUIModel))
+	model, _ = m.handleKeyPress(tea.KeyMsg{Type: tea.KeyEnter})
+	resp := <-respChan
+	if resp.Action != game.PlayerActionBuy || len(resp.Params) != 1 || resp.Params[0] != "2" {
+		t.Fatalf("unexpected purchase response: %+v", resp)
 	}
 }
