@@ -83,6 +83,28 @@ type Game struct {
 	eventEmitter      *SimpleEventEmitter
 }
 
+// handSize returns the number of cards the player should hold based on jokers
+func (g *Game) handSize() int {
+	size := InitialCards
+	for _, j := range g.jokers {
+		if j.Effect == AddHandSize {
+			size += j.EffectMagnitude
+		}
+	}
+	return size
+}
+
+// maxDiscards returns allowed discards based on jokers
+func (g *Game) maxDiscards() int {
+	max := MaxDiscards
+	for _, j := range g.jokers {
+		if j.Effect == AddDiscards {
+			max += j.EffectMagnitude
+		}
+	}
+	return max
+}
+
 type PrintMode int
 
 const (
@@ -129,9 +151,10 @@ func NewGame(eventHandler EventHandler) *Game {
 	game.currentTarget = GetAnteRequirement(game.currentAnte, game.currentBlind)
 
 	// Deal initial hand
-	game.playerCards = make([]Card, InitialCards)
-	copy(game.playerCards, deck[game.deckIndex:game.deckIndex+InitialCards])
-	game.deckIndex += InitialCards
+	initial := game.handSize()
+	game.playerCards = make([]Card, initial)
+	copy(game.playerCards, deck[game.deckIndex:game.deckIndex+initial])
+	game.deckIndex += initial
 
 	// Initialize display-to-original mapping
 	game.displayToOriginal = make([]int, len(game.playerCards))
@@ -155,10 +178,10 @@ func (g *Game) Run() {
 			// Update display mapping and emit current state
 			g.updateDisplayToOriginalMapping()
 			g.eventEmitter.EmitGameState(g.currentAnte, g.currentBlind, g.currentTarget, g.totalScore,
-				MaxHands-g.handsPlayed, MaxDiscards-g.discardsUsed, g.money, g.jokers)
+				MaxHands-g.handsPlayed, g.maxDiscards()-g.discardsUsed, g.money, g.jokers)
 			g.eventEmitter.EmitCardsDealt(g.playerCards, g.displayToOriginal, g.sortMode)
 
-			action, params, quit := g.eventEmitter.handler.GetPlayerAction(g.discardsUsed < MaxDiscards)
+			action, params, quit := g.eventEmitter.handler.GetPlayerAction(g.discardsUsed < g.maxDiscards())
 			if quit {
 				g.eventEmitter.EmitInfo("Thanks for playing!")
 				gameRunning = false
@@ -301,7 +324,7 @@ func (g *Game) handlePlayAction(params []string) {
 
 // handleDiscardAction processes a discard action
 func (g *Game) handleDiscardAction(params []string) {
-	if g.discardsUsed >= MaxDiscards {
+	if g.discardsUsed >= g.maxDiscards() {
 		g.eventEmitter.EmitEvent(InvalidActionEvent{
 			Action: "discard",
 			Reason: "No discards remaining!",
@@ -337,7 +360,7 @@ func (g *Game) handleDiscardAction(params []string) {
 	g.eventEmitter.EmitEvent(CardsDiscardedEvent{
 		DiscardedCards: selectedCards,
 		NumCards:       len(selectedCards),
-		DiscardsLeft:   MaxDiscards - g.discardsUsed,
+		DiscardsLeft:   g.maxDiscards() - g.discardsUsed,
 	})
 
 	// Remove discarded cards and deal new ones
@@ -408,7 +431,7 @@ func (g *Game) handleBlindCompletion() {
 	}
 
 	unusedHands := MaxHands - g.handsPlayed
-	unusedDiscards := MaxDiscards - g.discardsUsed
+	unusedDiscards := g.maxDiscards() - g.discardsUsed
 	bonusReward := unusedHands*UnusedHandReward + unusedDiscards*UnusedDiscardReward
 	jokerReward := CalculateJokerRewards(g.jokers)
 	totalReward := baseReward + bonusReward + jokerReward
@@ -458,9 +481,10 @@ func (g *Game) handleBlindCompletion() {
 		// Shuffle and deal new hand
 		g.deckIndex = 0
 		ShuffleDeck(g.deck)
-		g.playerCards = make([]Card, InitialCards)
-		copy(g.playerCards, g.deck[g.deckIndex:g.deckIndex+InitialCards])
-		g.deckIndex += InitialCards
+		handSize := g.handSize()
+		g.playerCards = make([]Card, handSize)
+		copy(g.playerCards, g.deck[g.deckIndex:g.deckIndex+handSize])
+		g.deckIndex += handSize
 
 		// Show next blind info
 		g.eventEmitter.EmitEvent(NewBlindStartedEvent{
