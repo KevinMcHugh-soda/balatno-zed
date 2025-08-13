@@ -10,12 +10,13 @@ This document explains how to configure jokers in Balatro CLI using the YAML-bas
 jokers:
   - name: "Joker Name"
     value: 6                    # Price in shop
-    rarity: "Common"            # Currently unused, for future expansion  
-    effect: "AddChips"          # Effect type
-    effect_magnitude: 30        # Strength of effect
-    hand_matching_rule: "ContainsPair"  # When to trigger based on hand type
-    card_matching_rule: "IsAce"         # (Optional) bonus per matching card
+    rarity: "Common"            # Currently unused, for future expansion
     description: "Description shown in shop"
+    effects:
+      - effect: "AddChips"      # Effect type
+        effect_magnitude: 30    # Strength of effect
+        hand_matching_rule: "ContainsPair"  # When to trigger based on hand type
+        card_matching_rule: "IsAce"         # (Optional) bonus per matching card
 ```
 
 ## 🎭 Effect Types
@@ -66,6 +67,24 @@ Replays matching cards so they're scored twice.
 ```
 
 **Score Calculation**: Matching cards add their value again and retrigger card-based bonuses.
+
+## 🧩 Composite Jokers
+
+A joker can now include multiple effects via the `effects` array. Each entry follows the same structure as single-effect jokers.
+
+```yaml
+- name: "Combo"
+  value: 7
+  effects:
+    - effect: "AddChips"
+      effect_magnitude: 10
+      hand_matching_rule: "ContainsPair"
+    - effect: "AddMult"
+      effect_magnitude: 2
+      hand_matching_rule: "ContainsPair"
+```
+
+The joker above grants both +10 chips and +2 multiplier whenever the played hand contains a pair.
 
 ## 🃏 Hand Matching Rules
 

@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -24,8 +25,26 @@ func (ms ShoppingMode) renderContent(m TUIModel) string {
 	gameInfo := fmt.Sprintf("%s Ante %d - %s✅\n", "🏪", m.gameState.Ante, blindText) +
 		fmt.Sprintf("🎴 Hands: %d | 🗑️ Discards: %d | 💰 Money: $%d | 🎲 Reroll: $%d",
 			m.gameState.Hands, m.gameState.Discards, m.gameState.Money, m.shopInfo.RerollCost)
+
+	// Add joker information
+	var jokerLines []string
+	if len(m.gameState.Jokers) == 0 {
+		jokerLines = append(jokerLines, "🃏 Jokers: None")
+	} else {
+		jokerLines = append(jokerLines, "🃏 Jokers:")
+		for _, joker := range m.gameState.Jokers {
+			jokerLines = append(jokerLines, renderOwnedJoker(joker))
+		}
+	}
+	gameInfo += "\n" + strings.Join(jokerLines, "\n")
+
+	infoHeight := 3 + len(jokerLines)
+	if infoHeight < 5 {
+		infoHeight = 5
+	}
+
 	gameInfoBox := gameInfoStyle.
-		Height(5).
+		Height(infoHeight).
 		Render(gameInfo)
 
 	var jokerViews []string

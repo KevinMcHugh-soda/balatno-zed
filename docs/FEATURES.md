@@ -69,7 +69,7 @@ Buy (1) The Golden Joker, or (s)kip shop:
 - **Ownership Check**: Won't offer jokers the player already owns
 - **Current Inventory**: Displays owned jokers clearly
 - **Simple Input**: Type `1` to buy, anything else to skip
-- **Joker Reordering**: Press `j` to reorder owned jokers
+- **Joker Reordering**: Press `j` to reorder owned jokers, `s` to sell the selected joker for half price
 
 ---
 
@@ -334,5 +334,5 @@ This implementation brings Balatro CLI significantly closer to the authentic Bal
 ## 💾 Save & Load
 
 - **Load from JSON**: Resume a run using `-load <file>`
-- **Auto-save**: Game state written to timestamped JSON when quitting or timing out
+- **Auto-save**: Game state written to `saves/` as timestamped JSON when quitting or timing out
 - **Save format**: JSON with `save_version`, `seed`, `current_ante`, `current_blind`, `current_money`, and `current_jokers`

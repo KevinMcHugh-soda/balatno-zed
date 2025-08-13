@@ -88,8 +88,10 @@ type Game struct {
 func (g *Game) handSize() int {
 	size := InitialCards
 	for _, j := range g.jokers {
-		if j.Effect == AddHandSize {
-			size += j.EffectMagnitude
+		for _, eff := range j.Effects {
+			if eff.Effect == AddHandSize {
+				size += eff.EffectMagnitude
+			}
 		}
 	}
 	if g.currentBlind == BossBlind {
@@ -107,8 +109,10 @@ func (g *Game) handSize() int {
 func (g *Game) maxDiscards() int {
 	max := MaxDiscards
 	for _, j := range g.jokers {
-		if j.Effect == AddDiscards {
-			max += j.EffectMagnitude
+		for _, eff := range j.Effects {
+			if eff.Effect == AddDiscards {
+				max += eff.EffectMagnitude
+			}
 		}
 	}
 	return max
@@ -228,6 +232,8 @@ func (g *Game) Run() {
 				g.handleResortAction()
 			} else if action == PlayerActionMoveJoker {
 				g.handleMoveJokerAction(params)
+			} else if action == PlayerActionSellJoker {
+				g.handleSellJokerAction(params)
 			}
 		}
 
@@ -660,6 +666,8 @@ func (g *Game) showShop() {
 			}
 		} else if action == PlayerActionMoveJoker {
 			g.handleMoveJokerAction(params)
+		} else if action == PlayerActionSellJoker {
+			g.handleSellJokerAction(params)
 		} else if action == PlayerActionBuy {
 			choice := params[0]
 			if choice, err := strconv.Atoi(choice); err == nil && choice >= 1 && choice <= len(shopItems) {
@@ -795,6 +803,8 @@ func (g *Game) showShopWithItems(availableJokers []Joker, shopItems []Joker) {
 			}
 		} else if action == PlayerActionMoveJoker {
 			g.handleMoveJokerAction(params)
+		} else if action == PlayerActionSellJoker {
+			g.handleSellJokerAction(params)
 		} else if action == PlayerActionBuy {
 			choice := params[0]
 			if choice, err := strconv.Atoi(choice); err == nil && choice >= 1 && choice <= len(shopItems) {
@@ -946,4 +956,37 @@ func (g *Game) handleMoveJokerAction(params []string) {
 	}
 	g.eventEmitter.EmitGameState(g.currentAnte, g.currentBlind, g.currentTarget, g.totalScore,
 		MaxHands-g.handsPlayed, g.maxDiscards()-g.discardsUsed, g.money, g.jokers, bossName)
+}
+
+// handleSellJokerAction removes a joker and refunds half its price
+func (g *Game) handleSellJokerAction(params []string) {
+	if len(params) != 1 {
+		g.eventEmitter.EmitEvent(InvalidActionEvent{
+			Action: "sell_joker",
+			Reason: "Usage: sell_joker <index>",
+		})
+		return
+	}
+
+	idx, err := strconv.Atoi(params[0])
+	if err != nil || idx < 1 || idx > len(g.jokers) {
+		g.eventEmitter.EmitEvent(InvalidActionEvent{
+			Action: "sell_joker",
+			Reason: fmt.Sprintf("Invalid joker number: %s", params[0]),
+		})
+		return
+	}
+
+	i := idx - 1
+	sold := g.jokers[i]
+	g.jokers = append(g.jokers[:i], g.jokers[i+1:]...)
+	refund := sold.Price / 2
+	g.money += refund
+
+	g.eventEmitter.EmitEvent(MessageEvent{
+		Message: fmt.Sprintf("Sold %s for $%d", sold.Name, refund),
+		Type:    "success",
+	})
+	g.eventEmitter.EmitGameState(g.currentAnte, g.currentBlind, g.currentTarget, g.totalScore,
+		MaxHands-g.handsPlayed, g.maxDiscards()-g.discardsUsed, g.money, g.jokers)
 }
