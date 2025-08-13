@@ -334,5 +334,5 @@ This implementation brings Balatro CLI significantly closer to the authentic Bal
 ## 💾 Save & Load
 
 - **Load from JSON**: Resume a run using `-load <file>`
-- **Auto-save**: Game state written to timestamped JSON when quitting or timing out
+- **Auto-save**: Game state written to `saves/` as timestamped JSON when quitting or timing out
 - **Save format**: JSON with `save_version`, `seed`, `current_ante`, `current_blind`, `current_money`, and `current_jokers`

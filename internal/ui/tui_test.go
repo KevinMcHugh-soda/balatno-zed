@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"strings"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -207,7 +208,6 @@ func TestJokerReorder(t *testing.T) {
 	}
 }
 
-// TestJokerSell ensures selling a joker sends the correct action and removes it from state.
 func TestJokerSell(t *testing.T) {
 	respChan := make(chan PlayerActionResponse, 1)
 	m := TUIModel{
@@ -232,5 +232,19 @@ func TestJokerSell(t *testing.T) {
 
 	if len(m.gameState.Jokers) != 1 || m.gameState.Jokers[0].Name != "J2" {
 		t.Fatalf("expected remaining joker to be J2, got %v", m.gameState.Jokers)
+  }
+}
+
+func TestShoppingModeRendersOwnedJokers(t *testing.T) {
+	m := TUIModel{
+		gameState: game.GameStateChangedEvent{
+			Jokers: []game.Joker{{Name: "J1", Description: "desc"}},
+		},
+		shopInfo: &game.ShopOpenedEvent{Money: 10, RerollCost: 5},
+	}
+	sm := ShoppingMode{}
+	output := sm.renderContent(m)
+	if !strings.Contains(output, "J1: desc") {
+		t.Fatalf("expected owned joker to be rendered, got %s", output)
 	}
 }
