@@ -74,7 +74,11 @@ func (h *LoggerEventHandler) handleGameStarted() {
 }
 
 func (h *LoggerEventHandler) handleGameStateChanged(e GameStateChangedEvent) {
-	fmt.Printf("🎯 Ante %d - %s | Target: %d | Current Score: %d\n", e.Ante, e.Blind, e.Target, e.Score)
+	blindName := e.Blind.String()
+	if e.Blind == BossBlind && e.Boss != "" {
+		blindName = fmt.Sprintf("%s: %s", blindName, e.Boss)
+	}
+	fmt.Printf("🎯 Ante %d - %s | Target: %d | Current Score: %d\n", e.Ante, blindName, e.Target, e.Score)
 	fmt.Printf("🎴 Hands Left: %d | 🗑️ Discards Left: %d | 💰 Money: $%d\n", e.Hands, e.Discards, e.Money)
 
 	if len(e.Jokers) > 0 {

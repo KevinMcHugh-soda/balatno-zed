@@ -208,8 +208,12 @@ func (g *Game) Run() {
 		for g.handsPlayed < MaxHands && g.totalScore < g.currentTarget {
 			// Update display mapping and emit current state
 			g.updateDisplayToOriginalMapping()
+			bossName := ""
+			if g.currentBlind == BossBlind {
+				bossName = g.currentBoss.Description()
+			}
 			g.eventEmitter.EmitGameState(g.currentAnte, g.currentBlind, g.currentTarget, g.totalScore,
-				MaxHands-g.handsPlayed, g.maxDiscards()-g.discardsUsed, g.money, g.jokers)
+				MaxHands-g.handsPlayed, g.maxDiscards()-g.discardsUsed, g.money, g.jokers, bossName)
 			g.eventEmitter.EmitCardsDealt(g.playerCards, g.displayToOriginal, g.sortMode)
 
 			action, params, quit := g.eventEmitter.handler.GetPlayerAction(g.discardsUsed < g.maxDiscards())
@@ -946,8 +950,12 @@ func (g *Game) handleMoveJokerAction(params []string) {
 		return
 	}
 
+	bossName := ""
+	if g.currentBlind == BossBlind {
+		bossName = g.currentBoss.Description()
+	}
 	g.eventEmitter.EmitGameState(g.currentAnte, g.currentBlind, g.currentTarget, g.totalScore,
-		MaxHands-g.handsPlayed, g.maxDiscards()-g.discardsUsed, g.money, g.jokers)
+		MaxHands-g.handsPlayed, g.maxDiscards()-g.discardsUsed, g.money, g.jokers, bossName)
 }
 
 // handleSellJokerAction removes a joker and refunds half its price

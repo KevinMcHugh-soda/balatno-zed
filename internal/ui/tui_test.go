@@ -208,6 +208,27 @@ func TestJokerReorder(t *testing.T) {
 	}
 }
 
+func TestBossBlindNameInGameInfo(t *testing.T) {
+	m := TUIModel{
+		gameState: game.GameStateChangedEvent{
+			Ante:     1,
+			Blind:    game.BossBlind,
+			Target:   100,
+			Score:    0,
+			Hands:    4,
+			Discards: 3,
+			Money:    0,
+			Boss:     "Hearts score zero",
+		},
+		mode:  GameMode{},
+		cards: []game.Card{},
+	}
+	content := GameMode{}.renderContent(m)
+	if !strings.Contains(content, "Boss Blind: Hearts score zero") {
+		t.Fatalf("boss blind name not found in game info: %s", content)
+  }
+}
+
 func TestJokerSell(t *testing.T) {
 	respChan := make(chan PlayerActionResponse, 1)
 	m := TUIModel{

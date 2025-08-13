@@ -18,7 +18,11 @@ type ShoppingMode struct {
 }
 
 func (ms ShoppingMode) renderContent(m TUIModel) string {
-	gameInfo := fmt.Sprintf("%s Ante %d - %s✅\n", "🏪", m.gameState.Ante, m.gameState.Blind) +
+	blindText := m.gameState.Blind.String()
+	if m.gameState.Blind == game.BossBlind && m.gameState.Boss != "" {
+		blindText = fmt.Sprintf("%s: %s", blindText, m.gameState.Boss)
+	}
+	gameInfo := fmt.Sprintf("%s Ante %d - %s✅\n", "🏪", m.gameState.Ante, blindText) +
 		fmt.Sprintf("🎴 Hands: %d | 🗑️ Discards: %d | 💰 Money: $%d | 🎲 Reroll: $%d",
 			m.gameState.Hands, m.gameState.Discards, m.gameState.Money, m.shopInfo.RerollCost)
 

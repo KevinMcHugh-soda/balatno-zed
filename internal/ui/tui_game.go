@@ -45,7 +45,11 @@ func (gm GameMode) renderContent(m TUIModel) string {
 		blindEmoji = "💀"
 	}
 
-	gameInfo := fmt.Sprintf("%s Ante %d - %s\n", blindEmoji, m.gameState.Ante, m.gameState.Blind) +
+	blindText := m.gameState.Blind.String()
+	if m.gameState.Blind == game.BossBlind && m.gameState.Boss != "" {
+		blindText = fmt.Sprintf("%s: %s", blindText, m.gameState.Boss)
+	}
+	gameInfo := fmt.Sprintf("%s Ante %d - %s\n", blindEmoji, m.gameState.Ante, blindText) +
 		fmt.Sprintf("🎯 Target: %d | Current Score: %d [%s] (%.1f%%)\n",
 			m.gameState.Target, m.gameState.Score, progressBar, progress*100) +
 		fmt.Sprintf("🎴 Hands Left: %d | 🗑️ Discards Left: %d | 💰 Money: $%d",
