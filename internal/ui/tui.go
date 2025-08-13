@@ -271,6 +271,9 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			blindEmoji = "💀"
 		}
 		msgStr := fmt.Sprintf("%s NOW ENTERING: %s (Ante %d) | Target: %d points", blindEmoji, event.Blind, event.Ante, event.Target)
+		if event.Blind == game.BossBlind && event.Boss != nil {
+			msgStr += fmt.Sprintf(" | Boss: %s - %s", event.Boss.Name, event.Boss.Effect)
+		}
 		m.setStatusMessage(msgStr)
 		m.logEvent(msgStr)
 		return m, nil

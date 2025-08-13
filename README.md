@@ -90,8 +90,8 @@ BALATRO_TIMEOUT=300 ./balatro -tui
 - **8 Antes** total to complete the game
 - Each Ante contains **3 Blinds** in sequence:
   - 🔸 **Small Blind** - Base difficulty
-  - 🔶 **Big Blind** - 1.5x harder than Small Blind  
-  - 💀 **Boss Blind** - 2x harder than Small Blind (special rules coming soon!)
+  - 🔶 **Big Blind** - 1.5x harder than Small Blind
+  - 💀 **Boss Blind** - 2x harder than Small Blind and features a boss with special effects
 - **🏪 Shop** appears between each blind where you can spend money on Jokers
 
 ### Each Blind Challenge
@@ -277,6 +277,9 @@ Between each blind, you visit the **🏪 Shop** where you can:
 - **Double Down** ($4): +8 mult for hands containing pairs
 - **Straight Shooter** ($8): +100 chips for hands containing straights
 
+### YAML Boss System
+**💀 Configurable via `bosses.yaml`** - Define boss names and effects. Bosses marked with `final: true` only appear on antes divisible by 8.
+
 ### Money Management Tips
 - **Efficiency Rewards**: Unused hands/discards = more money
 - **Early Investment**: The Golden Joker quickly pays for itself
@@ -390,6 +393,8 @@ The codebase is organized into focused, modular files:
 - **`game.go`** - Ante/Blind progression, game loop, and player interaction
 - **`jokers.go`** - YAML joker system, shop mechanics, and effect processing
 - **`jokers.yaml`** - Joker definitions and balance configuration
+- **`bosses.go`** - YAML boss system and selection logic
+- **`bosses.yaml`** - Boss definitions
 
 ### Ante/Blind System
 
@@ -469,7 +474,7 @@ type HandEvaluator interface {
 
 This implementation includes core progression with **YAML-configurable joker systems**. The full Balatro experience also includes:
 
-- **Boss Blind Effects**: Special rules and constraints for Boss Blinds *(coming soon!)*
+- **More Boss Blind Effects**: Additional special rules for Boss Blinds
 - **Extended Joker Effects**: Conditional triggers, card-specific bonuses, deck modifications
 - **Advanced Shop Items**: Tarot cards, Planet cards, and card packs
 - **Card Enhancements**: Foil, holographic, and other card modifications
@@ -477,7 +482,7 @@ This implementation includes core progression with **YAML-configurable joker sys
 - **Stakes**: Higher difficulty modes with additional constraints
 - **Endless Mode**: Continue beyond Ante 8 for ultimate challenges
 
-**✅ Currently Implemented**: Ante progression, money system, shop, **YAML joker system with 15+ configurable jokers**
+**✅ Currently Implemented**: Ante progression, money system, shop, **YAML joker system with 15+ configurable jokers**, **YAML-configured bosses with in-game effects**
 
 ---
 

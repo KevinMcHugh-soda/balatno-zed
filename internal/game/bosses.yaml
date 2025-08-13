@@ -1,0 +1,6 @@
+bosses:
+  - name: "Skull King"
+    effect: "DoubleChips"
+  - name: "The Void"
+    effect: "HalveMoney"
+    final: true
