@@ -93,6 +93,7 @@ BALATRO_TIMEOUT=300 ./balatro -tui
   - 🔶 **Big Blind** - 1.5x harder than Small Blind  
   - 💀 **Boss Blind** - 2x harder than Small Blind with random boss effects (e.g. hearts score zero or reduced hand size)
 - **🏪 Shop** appears between each blind where you can spend money on Jokers
+- **Up to 5 Jokers** can be owned at a time
 
 ### Each Blind Challenge
 1. You get **4 hands** and **3 discards** to reach the target score

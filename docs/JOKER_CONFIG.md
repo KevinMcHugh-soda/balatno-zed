@@ -2,6 +2,8 @@
 
 This document explains how to configure jokers in Balatro CLI using the YAML-based system. All jokers are defined in `jokers.yaml` and loaded at runtime - no compilation required!
 
+Players can own at most **5** jokers during a run.
+
 ## 📁 Configuration File
 
 ### `jokers.yaml` Structure

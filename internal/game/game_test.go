@@ -155,6 +155,43 @@ func TestShowShopWithItems(t *testing.T) {
 	}
 }
 
+// TestShowShopAtJokerLimit ensures the shop still opens when the player already
+// holds the maximum number of jokers.
+func TestShowShopAtJokerLimit(t *testing.T) {
+	handler := &testEventHandler{
+		shopActions: []struct {
+			action PlayerAction
+			params []string
+		}{
+			{PlayerActionExitShop, nil},
+		},
+	}
+
+	g := &Game{
+		money:        10,
+		rerollCost:   5,
+		jokers:       []Joker{{Name: "J1"}, {Name: "J2"}, {Name: "J3"}, {Name: "J4"}, {Name: "J5"}},
+		eventEmitter: NewEventEmitter(),
+	}
+	g.eventEmitter.SetEventHandler(handler)
+
+	if err := LoadJokerConfigs(); err != nil {
+		t.Fatalf("failed to load joker configs: %v", err)
+	}
+
+	g.showShop()
+
+	opened := false
+	for _, e := range handler.events {
+		if _, ok := e.(ShopOpenedEvent); ok {
+			opened = true
+		}
+	}
+	if !opened {
+		t.Fatalf("expected shop to open even when joker inventory is full")
+	}
+}
+
 // TestHandSizeWithJoker verifies that a joker can increase the hand size.
 func TestHandSizeWithJoker(t *testing.T) {
 	g := &Game{

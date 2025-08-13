@@ -15,6 +15,7 @@ const (
 	InitialCards  = 7
 	MaxAntes      = 8
 	StartingMoney = 4
+	MaxJokers     = 5
 )
 
 // Money rewards for completing blinds
@@ -112,6 +113,16 @@ func (g *Game) maxDiscards() int {
 		}
 	}
 	return max
+}
+
+// addJoker adds a joker to the player's inventory if space is available.
+// Returns true if the joker was added, false if at capacity.
+func (g *Game) addJoker(joker Joker) bool {
+	if len(g.jokers) >= MaxJokers {
+		return false
+	}
+	g.jokers = append(g.jokers, joker)
+	return true
 }
 
 // applyBossCardModifiers adjusts card values based on current boss rule
@@ -549,6 +560,9 @@ func (g *Game) handleBlindCompletion() {
 
 // showShop displays the shop interface between blinds
 func (g *Game) showShop() {
+	if len(g.jokers) >= MaxJokers {
+		g.eventEmitter.EmitMessage("Joker inventory full! Sell a joker to buy more.", "info")
+	}
 	// Get all jokers player doesn't own
 	allJokers := GetAvailableJokers()
 	var availableJokers []Joker
@@ -669,25 +683,33 @@ func (g *Game) showShop() {
 				}
 
 				if g.money >= selectedJoker.Price {
-					g.money -= selectedJoker.Price
-					g.jokers = append(g.jokers, selectedJoker)
+					if g.addJoker(selectedJoker) {
+						g.money -= selectedJoker.Price
 
-					g.eventEmitter.EmitEvent(ShopItemPurchasedEvent{
-						Item:           NewShopItemData(selectedJoker, g.money+selectedJoker.Price),
-						RemainingMoney: g.money,
-					})
+						g.eventEmitter.EmitEvent(ShopItemPurchasedEvent{
+							Item:           NewShopItemData(selectedJoker, g.money+selectedJoker.Price),
+							RemainingMoney: g.money,
+						})
 
-					// Remove purchased item and update available jokers
-					shopItems[choice-1] = Joker{}
-					for i, joker := range availableJokers {
-						if joker.Name == selectedJoker.Name {
-							availableJokers = append(availableJokers[:i], availableJokers[i+1:]...)
-							break
+						// Remove purchased item and update available jokers
+						shopItems[choice-1] = Joker{}
+						for i, joker := range availableJokers {
+							if joker.Name == selectedJoker.Name {
+								availableJokers = append(availableJokers[:i], availableJokers[i+1:]...)
+								break
+							}
 						}
-					}
 
-					g.showShopWithItems(availableJokers, shopItems)
-					return
+						if len(g.jokers) >= MaxJokers {
+							g.eventEmitter.EmitMessage("Joker inventory full! Sell a joker to buy more.", "info")
+						}
+						g.showShopWithItems(availableJokers, shopItems)
+						return
+					}
+					g.eventEmitter.EmitEvent(InvalidActionEvent{
+						Action: "buy",
+						Reason: "Joker slots are full!",
+					})
 				} else {
 					g.eventEmitter.EmitEvent(InvalidActionEvent{
 						Action: "buy",
@@ -711,6 +733,9 @@ func (g *Game) showShop() {
 
 // showShopWithItems is a helper function to continue shop with specific items
 func (g *Game) showShopWithItems(availableJokers []Joker, shopItems []Joker) {
+	if len(g.jokers) >= MaxJokers {
+		g.eventEmitter.EmitMessage("Joker inventory full! Sell a joker to buy more.", "info")
+	}
 	// Convert jokers to shop item data for display
 	var items []ShopItemData
 	for _, joker := range shopItems {
@@ -804,25 +829,33 @@ func (g *Game) showShopWithItems(availableJokers []Joker, shopItems []Joker) {
 				}
 
 				if g.money >= selectedJoker.Price {
-					g.money -= selectedJoker.Price
-					g.jokers = append(g.jokers, selectedJoker)
+					if g.addJoker(selectedJoker) {
+						g.money -= selectedJoker.Price
 
-					g.eventEmitter.EmitEvent(ShopItemPurchasedEvent{
-						Item:           NewShopItemData(selectedJoker, g.money+selectedJoker.Price),
-						RemainingMoney: g.money,
-					})
+						g.eventEmitter.EmitEvent(ShopItemPurchasedEvent{
+							Item:           NewShopItemData(selectedJoker, g.money+selectedJoker.Price),
+							RemainingMoney: g.money,
+						})
 
-					// Remove purchased item
-					shopItems[choice-1] = Joker{}
-					for i, joker := range availableJokers {
-						if joker.Name == selectedJoker.Name {
-							availableJokers = append(availableJokers[:i], availableJokers[i+1:]...)
-							break
+						// Remove purchased item
+						shopItems[choice-1] = Joker{}
+						for i, joker := range availableJokers {
+							if joker.Name == selectedJoker.Name {
+								availableJokers = append(availableJokers[:i], availableJokers[i+1:]...)
+								break
+							}
 						}
-					}
 
-					g.showShopWithItems(availableJokers, shopItems)
-					return
+						if len(g.jokers) >= MaxJokers {
+							g.eventEmitter.EmitMessage("Joker inventory full! Sell a joker to buy more.", "info")
+						}
+						g.showShopWithItems(availableJokers, shopItems)
+						return
+					}
+					g.eventEmitter.EmitEvent(InvalidActionEvent{
+						Action: "buy",
+						Reason: "Joker slots are full!",
+					})
 				} else {
 					g.eventEmitter.EmitEvent(InvalidActionEvent{
 						Action: "buy",

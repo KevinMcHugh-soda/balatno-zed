@@ -1,6 +1,9 @@
 package game
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+)
 
 // Mock scanner for testing
 type MockScanner struct {
@@ -215,6 +218,24 @@ func TestShopPurchase(t *testing.T) {
 
 	if game.jokers[0].Name != jokerToBuy.Name {
 		t.Errorf("Expected purchased joker to be %s, got %s", jokerToBuy.Name, game.jokers[0].Name)
+	}
+}
+
+func TestJokerLimit(t *testing.T) {
+	game := createTestGame([]string{})
+
+	for i := 0; i < MaxJokers; i++ {
+		if !game.addJoker(Joker{Name: fmt.Sprintf("J%d", i)}) {
+			t.Fatalf("expected to add joker %d", i)
+		}
+	}
+
+	if game.addJoker(Joker{Name: "Extra"}) {
+		t.Errorf("should not be able to add joker beyond limit")
+	}
+
+	if len(game.jokers) != MaxJokers {
+		t.Errorf("expected %d jokers, got %d", MaxJokers, len(game.jokers))
 	}
 }
 

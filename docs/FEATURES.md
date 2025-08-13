@@ -70,6 +70,7 @@ Buy (1) The Golden Joker, or (s)kip shop:
 - **Current Inventory**: Displays owned jokers clearly
 - **Simple Input**: Type `1` to buy, anything else to skip
 - **Joker Reordering**: Press `j` to reorder owned jokers
+- **Joker Limit**: Players can hold at most 5 jokers
 
 ---
 
