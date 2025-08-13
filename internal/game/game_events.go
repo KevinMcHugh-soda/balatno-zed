@@ -19,6 +19,7 @@ const (
 	PlayerActionReroll    = "reroll"
 	PlayerActionBuy       = "buy"
 	PlayerActionMoveJoker = "move_joker"
+	PlayerActionSellJoker = "sell_joker"
 )
 
 // EventHandler processes game events and decides how to present them
@@ -57,6 +58,7 @@ type GameStateChangedEvent struct {
 	Discards int
 	Money    int
 	Jokers   []Joker
+	Boss     string
 }
 
 func (e GameStateChangedEvent) EventType() string { return "game_state_changed" }
@@ -225,7 +227,7 @@ func (e *SimpleEventEmitter) EmitGameStarted() {
 	e.EmitEvent(GameStartedEvent{})
 }
 
-func (e *SimpleEventEmitter) EmitGameState(ante int, blind BlindType, target, score, hands, discards, money int, jokers []Joker) {
+func (e *SimpleEventEmitter) EmitGameState(ante int, blind BlindType, target, score, hands, discards, money int, jokers []Joker, boss string) {
 	e.EmitEvent(GameStateChangedEvent{
 		Ante:     ante,
 		Blind:    blind,
@@ -235,6 +237,7 @@ func (e *SimpleEventEmitter) EmitGameState(ante int, blind BlindType, target, sc
 		Discards: discards,
 		Money:    money,
 		Jokers:   jokers,
+		Boss:     boss,
 	})
 }
 

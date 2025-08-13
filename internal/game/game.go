@@ -82,14 +82,25 @@ type Game struct {
 	jokers            []Joker
 	rerollCost        int
 	eventEmitter      *SimpleEventEmitter
+	currentBoss       BossRule
 }
 
 // handSize returns the number of cards the player should hold based on jokers
 func (g *Game) handSize() int {
 	size := InitialCards
 	for _, j := range g.jokers {
-		if j.Effect == AddHandSize {
-			size += j.EffectMagnitude
+		for _, eff := range j.Effects {
+			if eff.Effect == AddHandSize {
+				size += eff.EffectMagnitude
+			}
+		}
+	}
+	if g.currentBlind == BossBlind {
+		switch g.currentBoss {
+		case BossRuleMinusHand:
+			size--
+		case BossRulePlusHand:
+			size++
 		}
 	}
 	return size
@@ -99,11 +110,29 @@ func (g *Game) handSize() int {
 func (g *Game) maxDiscards() int {
 	max := MaxDiscards
 	for _, j := range g.jokers {
-		if j.Effect == AddDiscards {
-			max += j.EffectMagnitude
+		for _, eff := range j.Effects {
+			if eff.Effect == AddDiscards {
+				max += eff.EffectMagnitude
+			}
 		}
 	}
 	return max
+}
+
+// applyBossCardModifiers adjusts card values based on current boss rule
+func (g *Game) applyBossCardModifiers(cards []Card, cardValues int) int {
+	if g.currentBlind != BossBlind {
+		return cardValues
+	}
+	switch g.currentBoss {
+	case BossRuleNoHearts:
+		for _, c := range cards {
+			if c.Suit == Hearts {
+				cardValues -= c.Rank.Value()
+			}
+		}
+	}
+	return cardValues
 }
 
 type PrintMode int
@@ -131,6 +160,7 @@ func NewGame(eventHandler EventHandler) *Game {
 		jokers:       []Joker{},
 		rerollCost:   5, // Initial reroll cost
 		eventEmitter: NewEventEmitter(),
+		currentBoss:  BossRuleNone,
 	}
 
 	// Initialize random seed once
@@ -184,8 +214,12 @@ func (g *Game) Run() {
 		for g.handsPlayed < MaxHands && g.totalScore < g.currentTarget {
 			// Update display mapping and emit current state
 			g.updateDisplayToOriginalMapping()
+			bossName := ""
+			if g.currentBlind == BossBlind {
+				bossName = g.currentBoss.Description()
+			}
 			g.eventEmitter.EmitGameState(g.currentAnte, g.currentBlind, g.currentTarget, g.totalScore,
-				MaxHands-g.handsPlayed, g.maxDiscards()-g.discardsUsed, g.money, g.jokers)
+				MaxHands-g.handsPlayed, g.maxDiscards()-g.discardsUsed, g.money, g.jokers, bossName)
 			g.eventEmitter.EmitCardsDealt(g.playerCards, g.displayToOriginal, g.sortMode)
 
 			action, params, quit := g.eventEmitter.handler.GetPlayerAction(g.discardsUsed < g.maxDiscards())
@@ -204,6 +238,8 @@ func (g *Game) Run() {
 				g.handleResortAction()
 			} else if action == PlayerActionMoveJoker {
 				g.handleMoveJokerAction(params)
+			} else if action == PlayerActionSellJoker {
+				g.handleSellJokerAction(params)
 			}
 		}
 
@@ -314,6 +350,7 @@ func (g *Game) handlePlayAction(params []string) {
 	hand := Hand{Cards: selectedCards}
 	evaluator, _, cardValues, baseScore := EvaluateHand(hand)
 	cardValues += extraCardValue
+	cardValues = g.applyBossCardModifiers(selectedCards, cardValues)
 
 	// Calculate joker bonuses using cards including replays
 	jokerChips, jokerMult := CalculateJokerHandBonus(g.jokers, evaluator.Name(), cardsForJokers)
@@ -479,11 +516,13 @@ func (g *Game) handleBlindCompletion() {
 		g.currentBlind = BigBlind
 	} else if g.currentBlind == BigBlind {
 		g.currentBlind = BossBlind
+		g.currentBoss = randomBossRule()
 	} else {
 		// Completed Boss Blind, advance to next ante
 		oldAnte := g.currentAnte
 		g.currentAnte++
 		g.currentBlind = SmallBlind
+		g.currentBoss = BossRuleNone
 		if g.currentAnte <= MaxAntes {
 			g.eventEmitter.EmitEvent(AnteCompletedEvent{
 				CompletedAnte: oldAnte,
@@ -527,6 +566,9 @@ func (g *Game) handleBlindCompletion() {
 			NewCards: g.playerCards,
 			Boss:     boss,
 		})
+		if g.currentBlind == BossBlind {
+			g.eventEmitter.EmitInfo(fmt.Sprintf("Boss effect: %s", g.currentBoss.Description()))
+		}
 
 		// Show shop between blinds
 		g.showShop()
@@ -642,6 +684,8 @@ func (g *Game) showShop() {
 			}
 		} else if action == PlayerActionMoveJoker {
 			g.handleMoveJokerAction(params)
+		} else if action == PlayerActionSellJoker {
+			g.handleSellJokerAction(params)
 		} else if action == PlayerActionBuy {
 			choice := params[0]
 			if choice, err := strconv.Atoi(choice); err == nil && choice >= 1 && choice <= len(shopItems) {
@@ -662,6 +706,8 @@ func (g *Game) showShop() {
 						Item:           NewShopItemData(selectedJoker, g.money+selectedJoker.Price),
 						RemainingMoney: g.money,
 					})
+					g.eventEmitter.EmitGameState(g.currentAnte, g.currentBlind, g.currentTarget, g.totalScore,
+						MaxHands-g.handsPlayed, g.maxDiscards()-g.discardsUsed, g.money, g.jokers)
 
 					// Remove purchased item and update available jokers
 					shopItems[choice-1] = Joker{}
@@ -777,6 +823,8 @@ func (g *Game) showShopWithItems(availableJokers []Joker, shopItems []Joker) {
 			}
 		} else if action == PlayerActionMoveJoker {
 			g.handleMoveJokerAction(params)
+		} else if action == PlayerActionSellJoker {
+			g.handleSellJokerAction(params)
 		} else if action == PlayerActionBuy {
 			choice := params[0]
 			if choice, err := strconv.Atoi(choice); err == nil && choice >= 1 && choice <= len(shopItems) {
@@ -797,6 +845,8 @@ func (g *Game) showShopWithItems(availableJokers []Joker, shopItems []Joker) {
 						Item:           NewShopItemData(selectedJoker, g.money+selectedJoker.Price),
 						RemainingMoney: g.money,
 					})
+					g.eventEmitter.EmitGameState(g.currentAnte, g.currentBlind, g.currentTarget, g.totalScore,
+						MaxHands-g.handsPlayed, g.maxDiscards()-g.discardsUsed, g.money, g.jokers)
 
 					// Remove purchased item
 					shopItems[choice-1] = Joker{}
@@ -922,6 +972,43 @@ func (g *Game) handleMoveJokerAction(params []string) {
 		return
 	}
 
+	bossName := ""
+	if g.currentBlind == BossBlind {
+		bossName = g.currentBoss.Description()
+	}
+	g.eventEmitter.EmitGameState(g.currentAnte, g.currentBlind, g.currentTarget, g.totalScore,
+		MaxHands-g.handsPlayed, g.maxDiscards()-g.discardsUsed, g.money, g.jokers, bossName)
+}
+
+// handleSellJokerAction removes a joker and refunds half its price
+func (g *Game) handleSellJokerAction(params []string) {
+	if len(params) != 1 {
+		g.eventEmitter.EmitEvent(InvalidActionEvent{
+			Action: "sell_joker",
+			Reason: "Usage: sell_joker <index>",
+		})
+		return
+	}
+
+	idx, err := strconv.Atoi(params[0])
+	if err != nil || idx < 1 || idx > len(g.jokers) {
+		g.eventEmitter.EmitEvent(InvalidActionEvent{
+			Action: "sell_joker",
+			Reason: fmt.Sprintf("Invalid joker number: %s", params[0]),
+		})
+		return
+	}
+
+	i := idx - 1
+	sold := g.jokers[i]
+	g.jokers = append(g.jokers[:i], g.jokers[i+1:]...)
+	refund := sold.Price / 2
+	g.money += refund
+
+	g.eventEmitter.EmitEvent(MessageEvent{
+		Message: fmt.Sprintf("Sold %s for $%d", sold.Name, refund),
+		Type:    "success",
+	})
 	g.eventEmitter.EmitGameState(g.currentAnte, g.currentBlind, g.currentTarget, g.totalScore,
 		MaxHands-g.handsPlayed, g.maxDiscards()-g.discardsUsed, g.money, g.jokers)
 }

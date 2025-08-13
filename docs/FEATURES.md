@@ -69,7 +69,7 @@ Buy (1) The Golden Joker, or (s)kip shop:
 - **Ownership Check**: Won't offer jokers the player already owns
 - **Current Inventory**: Displays owned jokers clearly
 - **Simple Input**: Type `1` to buy, anything else to skip
-- **Joker Reordering**: Press `j` to reorder owned jokers
+- **Joker Reordering**: Press `j` to reorder owned jokers, `s` to sell the selected joker for half price
 
 ---
 
@@ -225,6 +225,18 @@ func PlayerHasJoker(playerJokers []Joker, jokerName string) bool
 
 ---
 
+## 💀 Boss Blind Modifiers
+
+Boss Blinds now apply a random rule to shake up gameplay:
+
+- **Hearts score zero** – any heart card contributes no value
+- **Hand size reduced by 1** – start the blind with one fewer card
+- **Hand size increased by 1** – begin with an extra card for more options
+
+These modifiers are announced at the start of each Boss Blind.
+
+---
+
 ## 🚀 Future Expansion
 
 ### Ready Framework
@@ -322,5 +334,5 @@ This implementation brings Balatro CLI significantly closer to the authentic Bal
 ## 💾 Save & Load
 
 - **Load from JSON**: Resume a run using `-load <file>`
-- **Auto-save**: Game state written to timestamped JSON when quitting or timing out
+- **Auto-save**: Game state written to `saves/` as timestamped JSON when quitting or timing out
 - **Save format**: JSON with `save_version`, `seed`, `current_ante`, `current_blind`, `current_money`, and `current_jokers`
