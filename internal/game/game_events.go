@@ -128,6 +128,7 @@ type NewBlindStartedEvent struct {
 	Blind    BlindType
 	Target   int
 	NewCards []Card
+	Boss     *Boss
 }
 
 func (e NewBlindStartedEvent) EventType() string { return "new_blind_started" }

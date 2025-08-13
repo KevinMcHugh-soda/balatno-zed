@@ -77,6 +77,7 @@ type Game struct {
 	currentAnte       int
 	currentBlind      BlindType
 	currentTarget     int
+	currentBoss       Boss
 	money             int
 	jokers            []Joker
 	rerollCost        int
@@ -174,6 +175,11 @@ func NewGame(eventHandler EventHandler) *Game {
 	// Load joker configurations
 	if err := LoadJokerConfigs(); err != nil {
 		// Joker config loading failed, but we have fallback defaults
+		fmt.Printf("Warning: %v\n", err)
+	}
+
+	// Load boss configurations
+	if err := LoadBossConfigs(); err != nil {
 		fmt.Printf("Warning: %v\n", err)
 	}
 
@@ -533,6 +539,13 @@ func (g *Game) handleBlindCompletion() {
 		g.rerollCost = 5 // Reset reroll cost for new blind
 		g.currentTarget = GetAnteRequirement(g.currentAnte, g.currentBlind)
 
+		if g.currentBlind == BossBlind {
+			g.currentBoss = GetBossForAnte(g.currentAnte)
+			g.applyBossEffect()
+		} else {
+			g.currentBoss = Boss{}
+		}
+
 		// Shuffle and deal new hand
 		g.deckIndex = 0
 		ShuffleDeck(g.deck)
@@ -542,11 +555,16 @@ func (g *Game) handleBlindCompletion() {
 		g.deckIndex += handSize
 
 		// Show next blind info
+		var boss *Boss
+		if g.currentBlind == BossBlind {
+			boss = &g.currentBoss
+		}
 		g.eventEmitter.EmitEvent(NewBlindStartedEvent{
 			Ante:     g.currentAnte,
 			Blind:    g.currentBlind,
 			Target:   g.currentTarget,
 			NewCards: g.playerCards,
+			Boss:     boss,
 		})
 		if g.currentBlind == BossBlind {
 			g.eventEmitter.EmitInfo(fmt.Sprintf("Boss effect: %s", g.currentBoss.Description()))
@@ -993,4 +1011,14 @@ func (g *Game) handleSellJokerAction(params []string) {
 	})
 	g.eventEmitter.EmitGameState(g.currentAnte, g.currentBlind, g.currentTarget, g.totalScore,
 		MaxHands-g.handsPlayed, g.maxDiscards()-g.discardsUsed, g.money, g.jokers)
+}
+
+// applyBossEffect modifies game state based on the current boss's effect
+func (g *Game) applyBossEffect() {
+	switch g.currentBoss.Effect {
+	case DoubleChips:
+		g.currentTarget *= 2
+	case HalveMoney:
+		g.money /= 2
+	}
 }

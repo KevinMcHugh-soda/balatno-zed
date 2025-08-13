@@ -218,6 +218,9 @@ func (h *LoggerEventHandler) handleNewBlindStarted(e NewBlindStartedEvent) {
 
 	fmt.Printf("%s NOW ENTERING: %s (Ante %d) %s\n", blindEmoji, e.Blind, e.Ante, blindEmoji)
 	fmt.Printf("🎯 NEW TARGET: %d points\n", e.Target)
+	if e.Blind == BossBlind && e.Boss != nil {
+		fmt.Printf("👑 Boss: %s - %s\n", e.Boss.Name, e.Boss.Effect)
+	}
 	fmt.Println("🃏 Fresh hand dealt!")
 	fmt.Println(strings.Repeat("-", 40))
 	fmt.Println()
