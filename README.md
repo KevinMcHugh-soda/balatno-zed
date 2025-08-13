@@ -454,7 +454,7 @@ type HandEvaluator interface {
 - **🏪 Shop Interface**: Clean shop display with affordability indicators and current joker list
 - **📍 Clear Status**: Ante, blind type, money, and requirements always visible
 - **🎨 Colorful Output**: Rich terminal formatting for better UX
-- **🔀 Joker Reordering**: Adjust joker priority directly from the TUI
+- **🔀 Joker Reordering & Selling**: Adjust joker priority and sell unwanted jokers for half price directly from the TUI
 
 ## Implementation Notes
 

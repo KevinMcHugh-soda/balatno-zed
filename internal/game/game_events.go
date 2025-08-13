@@ -19,6 +19,7 @@ const (
 	PlayerActionReroll    = "reroll"
 	PlayerActionBuy       = "buy"
 	PlayerActionMoveJoker = "move_joker"
+	PlayerActionSellJoker = "sell_joker"
 )
 
 // EventHandler processes game events and decides how to present them

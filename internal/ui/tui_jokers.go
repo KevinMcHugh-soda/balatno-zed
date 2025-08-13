@@ -53,6 +53,18 @@ func (jm *JokerOrderMode) handleKeyPress(m *TUIModel, msg string) (tea.Model, te
 			m.setStatusMessage(fmt.Sprintf("Invalid joker number: %s", msg))
 		}
 		return m, nil
+	case "s":
+		if jm.selected == nil {
+			m.setStatusMessage("Select a joker first")
+			return m, nil
+		}
+		idx := *jm.selected
+		joker := m.gameState.Jokers[idx]
+		m.sendAction(game.PlayerActionSellJoker, []string{strconv.Itoa(idx + 1)})
+		m.gameState.Jokers = append(m.gameState.Jokers[:idx], m.gameState.Jokers[idx+1:]...)
+		jm.selected = nil
+		m.setStatusMessage(fmt.Sprintf("Sold %s for $%d", joker.Name, joker.Price/2))
+		return m, nil
 	case "up", "k":
 		if jm.selected == nil {
 			m.setStatusMessage("Select a joker first")
@@ -88,5 +100,5 @@ func (jm *JokerOrderMode) toggleHelp() Mode {
 }
 
 func (jm *JokerOrderMode) getControls() string {
-	return " | 1-9: select joker, ↑/k: move up, ↓/j: move down, Enter/Esc: back"
+	return " | 1-9: select joker, ↑/k: move up, ↓/j: move down, S: sell, Enter/Esc: back"
 }
