@@ -688,6 +688,8 @@ func (g *Game) showShop() {
 						Item:           NewShopItemData(selectedJoker, g.money+selectedJoker.Price),
 						RemainingMoney: g.money,
 					})
+					g.eventEmitter.EmitGameState(g.currentAnte, g.currentBlind, g.currentTarget, g.totalScore,
+						MaxHands-g.handsPlayed, g.maxDiscards()-g.discardsUsed, g.money, g.jokers)
 
 					// Remove purchased item and update available jokers
 					shopItems[choice-1] = Joker{}
@@ -825,6 +827,8 @@ func (g *Game) showShopWithItems(availableJokers []Joker, shopItems []Joker) {
 						Item:           NewShopItemData(selectedJoker, g.money+selectedJoker.Price),
 						RemainingMoney: g.money,
 					})
+					g.eventEmitter.EmitGameState(g.currentAnte, g.currentBlind, g.currentTarget, g.totalScore,
+						MaxHands-g.handsPlayed, g.maxDiscards()-g.discardsUsed, g.money, g.jokers)
 
 					// Remove purchased item
 					shopItems[choice-1] = Joker{}
