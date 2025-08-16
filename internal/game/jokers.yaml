@@ -134,3 +134,11 @@ jokers:
     effect_magnitude: 0
     card_matching_rule: "IsFace"
     description: "Face cards are scored twice"
+
+  - name: "Multiplier"
+    value: 8
+    rarity: "Common"
+    effect: "MultiplyMult"
+    effect_magnitude: 2
+    hand_matching_rule: "None"
+    description: "×2 Mult every hand"

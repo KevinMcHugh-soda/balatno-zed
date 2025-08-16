@@ -117,7 +117,7 @@ func (h *LoggerEventHandler) handleHandPlayed(e HandPlayedEvent) {
 	fmt.Printf("Your hand: %s\n", strings.Join(handStr, " "))
 	fmt.Printf("Hand type: %s\n", e.HandType)
 
-	if e.JokerChips > 0 || e.JokerMult > 0 {
+	if e.JokerChips > 0 || e.JokerMult > 0 || e.JokerMultFactor > 1 {
 		fmt.Printf("Base Score: %d", e.BaseScore)
 		if e.JokerChips > 0 {
 			fmt.Printf(" + %d Joker Chips", e.JokerChips)
@@ -126,8 +126,15 @@ func (h *LoggerEventHandler) handleHandPlayed(e HandPlayedEvent) {
 		if e.JokerMult > 0 {
 			fmt.Printf(" + %d Joker Mult", e.JokerMult)
 		}
+		if e.JokerMultFactor > 1 {
+			fmt.Printf(" × %d Joker Mult", e.JokerMultFactor)
+		}
 		fmt.Println()
-		fmt.Printf("Final Score: (%d + %d) × %d = %d points\n", e.BaseScore+e.JokerChips, e.CardValues, e.Multiplier+e.JokerMult, e.FinalScore)
+		if e.JokerMultFactor > 1 {
+			fmt.Printf("Final Score: (%d + %d) × (%d + %d) × %d = %d points\n", e.BaseScore+e.JokerChips, e.CardValues, e.Multiplier, e.JokerMult, e.JokerMultFactor, e.FinalScore)
+		} else {
+			fmt.Printf("Final Score: (%d + %d) × %d = %d points\n", e.BaseScore+e.JokerChips, e.CardValues, e.Multiplier+e.JokerMult, e.FinalScore)
+		}
 	} else {
 		fmt.Printf("Base Score: %d | Card Values: %d | Mult: %dx\n", e.BaseScore, e.CardValues, e.Multiplier)
 		fmt.Printf("Final Score: (%d + %d) × %d = %d points\n", e.BaseScore, e.CardValues, e.Multiplier, e.FinalScore)

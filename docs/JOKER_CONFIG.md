@@ -55,6 +55,18 @@ Adds multiplier when playing matching hands.
 
 **Score Calculation**: `(base_score + card_values) × (base_mult + joker_mult)`
 
+### `MultiplyMult`
+Multiplies the hand's multiplier when conditions are met.
+
+```yaml
+- name: "Multiplier"
+  effect: "MultiplyMult"
+  effect_magnitude: 2           # ×2 multiplier
+  hand_matching_rule: "None"
+```
+
+**Score Calculation**: `(base_score + card_values) × (base_mult + joker_mult) × joker_mult_factor`
+
 ### `ReplayCard`
 Replays matching cards so they're scored twice.
 

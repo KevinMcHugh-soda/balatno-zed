@@ -18,20 +18,20 @@ func TestCalculateJokerHandBonus(t *testing.T) {
 	multCfg := JokerConfig{Name: "Mult", Effects: []JokerEffectConfig{{Effect: AddMult, EffectMagnitude: 5, HandMatchingRule: ContainsPair}}}
 	multJoker := createJokerFromConfig(multCfg)
 
-	chips, mult := CalculateJokerHandBonus([]Joker{chipJoker}, "Pair", []Card{})
-	if chips != 30 || mult != 0 {
-		t.Fatalf("expected 30 chips bonus, got chips=%d mult=%d", chips, mult)
+	chips, mult, factor := CalculateJokerHandBonus([]Joker{chipJoker}, "Pair", []Card{})
+	if chips != 30 || mult != 0 || factor != 1 {
+		t.Fatalf("expected 30 chips bonus, got chips=%d mult=%d factor=%d", chips, mult, factor)
 	}
 
-	chips, mult = CalculateJokerHandBonus([]Joker{multJoker}, "Pair", []Card{})
-	if chips != 0 || mult != 5 {
-		t.Fatalf("expected mult bonus 5, got chips=%d mult=%d", chips, mult)
+	chips, mult, factor = CalculateJokerHandBonus([]Joker{multJoker}, "Pair", []Card{})
+	if chips != 0 || mult != 5 || factor != 1 {
+		t.Fatalf("expected mult bonus 5, got chips=%d mult=%d factor=%d", chips, mult, factor)
 	}
 
 	// Non-matching hand should yield no bonus
-	chips, mult = CalculateJokerHandBonus([]Joker{chipJoker}, "High Card", []Card{})
-	if chips != 0 || mult != 0 {
-		t.Fatalf("expected no bonus for non-matching hand, got chips=%d mult=%d", chips, mult)
+	chips, mult, factor = CalculateJokerHandBonus([]Joker{chipJoker}, "High Card", []Card{})
+	if chips != 0 || mult != 0 || factor != 1 {
+		t.Fatalf("expected no bonus for non-matching hand, got chips=%d mult=%d factor=%d", chips, mult, factor)
 	}
 }
 
@@ -41,15 +41,15 @@ func TestCardMatchingRule(t *testing.T) {
 	joker := createJokerFromConfig(cfg)
 
 	hand := []Card{{Rank: Ace, Suit: Hearts}, {Rank: Ace, Suit: Spades}, {Rank: Two, Suit: Clubs}}
-	chips, mult := CalculateJokerHandBonus([]Joker{joker}, "High Card", hand)
-	if chips != 20 || mult != 0 {
-		t.Fatalf("expected 20 chips bonus, got chips=%d mult=%d", chips, mult)
+	chips, mult, factor := CalculateJokerHandBonus([]Joker{joker}, "High Card", hand)
+	if chips != 20 || mult != 0 || factor != 1 {
+		t.Fatalf("expected 20 chips bonus, got chips=%d mult=%d factor=%d", chips, mult, factor)
 	}
 
 	hand = []Card{{Rank: Two, Suit: Clubs}}
-	chips, mult = CalculateJokerHandBonus([]Joker{joker}, "High Card", hand)
-	if chips != 0 || mult != 0 {
-		t.Fatalf("expected no bonus without matching cards, got chips=%d mult=%d", chips, mult)
+	chips, mult, factor = CalculateJokerHandBonus([]Joker{joker}, "High Card", hand)
+	if chips != 0 || mult != 0 || factor != 1 {
+		t.Fatalf("expected no bonus without matching cards, got chips=%d mult=%d factor=%d", chips, mult, factor)
 	}
 }
 
@@ -66,9 +66,9 @@ func TestReplayFaceCards(t *testing.T) {
 
 	cardsForJokers, extraValue := ApplyReplayCardEffects([]Joker{replayJoker, bonusJoker}, cards)
 	cardValues += extraValue
-	chips, mult := CalculateJokerHandBonus([]Joker{replayJoker, bonusJoker}, evaluator.Name(), cardsForJokers)
+	chips, mult, factor := CalculateJokerHandBonus([]Joker{replayJoker, bonusJoker}, evaluator.Name(), cardsForJokers)
 	finalBase := baseScore + chips
-	finalMult := evaluator.Multiplier() + mult
+	finalMult := (evaluator.Multiplier() + mult) * factor
 	finalScore := (finalBase + cardValues) * finalMult
 
 	if finalScore != 50 {
@@ -86,8 +86,25 @@ func TestCompositeJoker(t *testing.T) {
 		},
 	}
 	joker := createJokerFromConfig(cfg)
-	chips, mult := CalculateJokerHandBonus([]Joker{joker}, "Pair", []Card{})
-	if chips != 10 || mult != 2 {
-		t.Fatalf("expected chips=10 mult=2, got chips=%d mult=%d", chips, mult)
+	chips, mult, factor := CalculateJokerHandBonus([]Joker{joker}, "Pair", []Card{})
+	if chips != 10 || mult != 2 || factor != 1 {
+		t.Fatalf("expected chips=10 mult=2 factor=1, got chips=%d mult=%d factor=%d", chips, mult, factor)
+	}
+}
+
+// TestMultiplyMult verifies jokers that multiply the multiplier.
+func TestMultiplyMult(t *testing.T) {
+	cfg := JokerConfig{Name: "Doubler", Effects: []JokerEffectConfig{{Effect: MultiplyMult, EffectMagnitude: 2, HandMatchingRule: ContainsPair}}}
+	joker := createJokerFromConfig(cfg)
+
+	_, mult, factor := CalculateJokerHandBonus([]Joker{joker}, "Pair", []Card{})
+	if mult != 0 || factor != 2 {
+		t.Fatalf("expected multiplier factor=2, got mult=%d factor=%d", mult, factor)
+	}
+
+	// Non-matching hand should not multiply
+	_, mult, factor = CalculateJokerHandBonus([]Joker{joker}, "High Card", []Card{})
+	if mult != 0 || factor != 1 {
+		t.Fatalf("expected no effect for non-matching hand, got mult=%d factor=%d", mult, factor)
 	}
 }

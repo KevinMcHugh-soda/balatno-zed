@@ -230,10 +230,10 @@ func TestBossNoHeartsDisablesScoring(t *testing.T) {
 	handler := &testEventHandler{}
 	deck := NewDeck()
 	g := &Game{
-		currentBlind: BossBlind,
-		currentBoss:  BossRuleNoHearts,
-		deck:         deck,
-		deckIndex:    7,
+		currentBlind:    BossBlind,
+		currentBossRule: BossRuleNoHearts,
+		deck:            deck,
+		deckIndex:       7,
 		playerCards: []Card{
 			{Rank: Ten, Suit: Hearts},
 			{Rank: Two, Suit: Clubs},
@@ -257,8 +257,8 @@ func TestBossNoHeartsDisablesScoring(t *testing.T) {
 // TestBossHandSizeReduction verifies boss rule can reduce hand size.
 func TestBossHandSizeReduction(t *testing.T) {
 	g := &Game{
-		currentBlind: BossBlind,
-		currentBoss:  BossRuleMinusHand,
+		currentBlind:    BossBlind,
+		currentBossRule: BossRuleMinusHand,
 	}
 	if got := g.handSize(); got != InitialCards-1 {
 		t.Fatalf("expected hand size %d, got %d", InitialCards-1, got)

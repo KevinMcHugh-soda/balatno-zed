@@ -73,15 +73,16 @@ func (e CardsDealtEvent) EventType() string { return "cards_dealt" }
 
 // Player action events
 type HandPlayedEvent struct {
-	SelectedCards []Card
-	HandType      string
-	BaseScore     int
-	CardValues    int
-	Multiplier    int
-	JokerChips    int
-	JokerMult     int
-	FinalScore    int
-	NewTotalScore int
+	SelectedCards   []Card
+	HandType        string
+	BaseScore       int
+	CardValues      int
+	Multiplier      int
+	JokerChips      int
+	JokerMult       int
+	JokerMultFactor int
+	FinalScore      int
+	NewTotalScore   int
 }
 
 func (e HandPlayedEvent) EventType() string { return "hand_played" }
