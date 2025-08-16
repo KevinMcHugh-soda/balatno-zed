@@ -88,7 +88,7 @@ type Joker struct {
 ### YAML Joker Configuration System
 - **15+ Configurable Jokers**: All defined in `jokers.yaml`
 - **Runtime Loading**: No compilation needed for new jokers
-- **Three Effect Types**: AddMoney, AddChips, AddMult
+- **Five Effect Types**: AddMoney, AddChips, AddMult, MultiplyMult, ReplayCard
 - **Hand-Based Triggers**: Effects activate based on played hand types
 - **Fallback Safety**: Uses defaults if YAML file missing/invalid
 
@@ -112,6 +112,10 @@ type Joker struct {
 - **Three's a Charm** ($6): +15 mult if hand contains Three of a Kind
 - **Linear Logic** ($7): +20 mult if hand contains a Straight
 - **Effect**: Increases final multiplier for explosive scoring
+
+#### MultiplyMult Jokers
+- **Multiplier** ($8): ×2 mult every hand
+- **Effect**: Multiplies final multiplier for massive boosts
 
 #### ReplayCard Jokers
 - **Face Dancer** ($7): Face cards are scored twice
@@ -307,8 +311,8 @@ const (
 
 ### Scoring Integration
 - **Hand Evaluation**: Jokers checked during `EvaluateHand()`
-- **Effect Application**: `CalculateJokerHandBonus()` returns chips/mult bonuses
-- **Score Calculation**: `(base + joker_chips + cards) × (base_mult + joker_mult)`
+- **Effect Application**: `CalculateJokerHandBonus()` returns chips, mult bonuses, and multiplier factors
+- **Score Calculation**: `(base + joker_chips + cards) × (base_mult + joker_mult) × joker_mult_factor`
 - **Visual Feedback**: Detailed breakdown shows joker contributions
 
 ### Strategic Impact

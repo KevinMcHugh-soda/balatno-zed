@@ -13,12 +13,13 @@ import (
 type JokerEffect string
 
 const (
-	AddMoney    JokerEffect = "AddMoney"
-	AddChips    JokerEffect = "AddChips"
-	AddMult     JokerEffect = "AddMult"
-	AddHandSize JokerEffect = "AddHandSize"
-	AddDiscards JokerEffect = "AddDiscards"
-	ReplayCard  JokerEffect = "ReplayCard"
+	AddMoney     JokerEffect = "AddMoney"
+	AddChips     JokerEffect = "AddChips"
+	AddMult      JokerEffect = "AddMult"
+	MultiplyMult JokerEffect = "MultiplyMult"
+	AddHandSize  JokerEffect = "AddHandSize"
+	AddDiscards  JokerEffect = "AddDiscards"
+	ReplayCard   JokerEffect = "ReplayCard"
 )
 
 // HandMatchingRule represents when a joker effect should trigger
@@ -181,6 +182,20 @@ func setDefaultJokerConfigs() {
 				},
 			},
 			Description: "Face cards are scored twice",
+		},
+		{
+			Name:   "Multiplier",
+			Value:  8,
+			Rarity: "Common",
+			Effects: []JokerEffectConfig{
+				{
+					Effect:           MultiplyMult,
+					EffectMagnitude:  2,
+					HandMatchingRule: None,
+					CardMatchingRule: CardNone,
+				},
+			},
+			Description: "×2 Mult every hand",
 		},
 	}
 }
@@ -369,14 +384,16 @@ func CalculateJokerRewards(jokers []Joker) int {
 }
 
 // CalculateJokerHandBonus calculates chips and mult bonus from jokers for a specific hand
-func CalculateJokerHandBonus(jokers []Joker, handType string, cards []Card) (int, int) {
+// It returns chip bonuses, additive multiplier bonuses, and multiplier factors.
+func CalculateJokerHandBonus(jokers []Joker, handType string, cards []Card) (int, int, int) {
 	totalChips := 0
 	totalMult := 0
+	multFactor := 1
 
 	for _, joker := range jokers {
 		for _, eff := range joker.Effects {
 			switch eff.Effect {
-			case AddChips, AddMult:
+			case AddChips, AddMult, MultiplyMult:
 				matches := 0
 				if eff.CardMatchingRule != CardNone {
 					for _, c := range cards {
@@ -391,16 +408,21 @@ func CalculateJokerHandBonus(jokers []Joker, handType string, cards []Card) (int
 					continue
 				}
 				bonus := eff.EffectMagnitude * matches
-				if eff.Effect == AddChips {
+				switch eff.Effect {
+				case AddChips:
 					totalChips += bonus
-				} else {
+				case AddMult:
 					totalMult += bonus
+				case MultiplyMult:
+					for i := 0; i < matches; i++ {
+						multFactor *= eff.EffectMagnitude
+					}
 				}
 			}
 		}
 	}
 
-	return totalChips, totalMult
+	return totalChips, totalMult, multFactor
 }
 
 // ApplyReplayCardEffects duplicates cards that match any ReplayCard joker
