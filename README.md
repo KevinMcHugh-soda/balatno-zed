@@ -178,16 +178,16 @@ small,big,boss
 - Each row = one ante (row 1 = Ante 1, row 2 = Ante 2, etc.)
 - Columns: `small` (Small Blind), `big` (Big Blind), `boss` (Boss Blind)
 
-#### `hand_scores.csv` - Poker Hand Values  
+#### `hand_scores.csv` - Poker Hand Values
 ```csv
-hand,base,mult
-High Card,5,1
-Pair,10,2
-Two Pair,20,2
+hand,level1,level2,level3,level4,level5,mult
+High Card,5,10,15,20,25,1
+Pair,10,15,20,25,30,2
+Two Pair,20,25,30,35,40,2
 ...
 ```
 - Each row = one poker hand type
-- Columns: `hand` (exact name), `base` (base score), `mult` (multiplier)
+- Columns: `hand` (exact name), `level1`-`level5` (base score per level), `mult` (multiplier)
 
 #### `jokers.yaml` - Joker Definitions
 ```yaml
@@ -436,8 +436,6 @@ Clean interface-based poker evaluation:
 ```go
 type HandEvaluator interface {
     Name() string
-    BaseScore() int  
-    Multiplier() int
     Matches(cards []Card) bool
     Priority() int
 }

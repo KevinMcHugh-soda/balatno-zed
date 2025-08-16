@@ -79,6 +79,7 @@ type Game struct {
 	currentTarget     int
 	money             int
 	jokers            []Joker
+	handLevels        map[string]int
 	rerollCost        int
 	eventEmitter      *SimpleEventEmitter
 }
@@ -105,6 +106,22 @@ func (g *Game) maxDiscards() int {
 	return max
 }
 
+// LevelUpHand increases the level of the specified hand type if possible
+func (g *Game) LevelUpHand(handName string) {
+	if g.handLevels == nil {
+		g.handLevels = make(map[string]int)
+	}
+	current := g.handLevels[handName]
+	score, ok := gameConfig.HandScores[handName]
+	if !ok {
+		g.handLevels[handName] = current + 1
+		return
+	}
+	if current < len(score.LevelScores) {
+		g.handLevels[handName] = current + 1
+	}
+}
+
 type PrintMode int
 
 const (
@@ -128,6 +145,7 @@ func NewGame(eventHandler EventHandler) *Game {
 		currentBlind: SmallBlind,
 		money:        StartingMoney,
 		jokers:       []Joker{},
+		handLevels:   make(map[string]int),
 		rerollCost:   5, // Initial reroll cost
 		eventEmitter: NewEventEmitter(),
 	}
@@ -160,6 +178,11 @@ func NewGame(eventHandler EventHandler) *Game {
 	game.displayToOriginal = make([]int, len(game.playerCards))
 	for i := range game.playerCards {
 		game.displayToOriginal[i] = i
+	}
+
+	// Initialize hand levels to 1
+	for _, eval := range handEvaluators {
+		game.handLevels[eval.Name()] = 1
 	}
 
 	// Set the event handler
@@ -306,7 +329,7 @@ func (g *Game) handlePlayAction(params []string) {
 
 	// Evaluate the hand
 	hand := Hand{Cards: selectedCards}
-	evaluator, _, cardValues, baseScore := EvaluateHand(hand)
+	evaluator, _, cardValues, baseScore, mult := EvaluateHand(hand, g.handLevels)
 	cardValues += extraCardValue
 
 	// Calculate joker bonuses using cards including replays
@@ -314,7 +337,7 @@ func (g *Game) handlePlayAction(params []string) {
 
 	// Apply joker bonuses to final score
 	finalBaseScore := baseScore + jokerChips
-	finalMult := evaluator.Multiplier() + jokerMult
+	finalMult := mult + jokerMult
 	finalScore := (finalBaseScore + cardValues) * finalMult
 
 	// Emit hand played event with all the details
@@ -323,7 +346,7 @@ func (g *Game) handlePlayAction(params []string) {
 		HandType:      evaluator.Name(),
 		BaseScore:     baseScore,
 		CardValues:    cardValues,
-		Multiplier:    evaluator.Multiplier(),
+		Multiplier:    mult,
 		JokerChips:    jokerChips,
 		JokerMult:     jokerMult,
 		FinalScore:    finalScore,

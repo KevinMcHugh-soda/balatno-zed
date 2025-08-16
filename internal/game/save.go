@@ -9,12 +9,13 @@ import (
 )
 
 type saveFile struct {
-	SaveVersion   int      `json:"save_version"`
-	Seed          int64    `json:"seed"`
-	CurrentAnte   int      `json:"current_ante"`
-	CurrentBlind  string   `json:"current_blind"`
-	CurrentMoney  int      `json:"current_money"`
-	CurrentJokers []string `json:"current_jokers"`
+	SaveVersion   int            `json:"save_version"`
+	Seed          int64          `json:"seed"`
+	CurrentAnte   int            `json:"current_ante"`
+	CurrentBlind  string         `json:"current_blind"`
+	CurrentMoney  int            `json:"current_money"`
+	CurrentJokers []string       `json:"current_jokers"`
+	HandLevels    map[string]int `json:"hand_levels"`
 }
 
 func parseBlindType(name string) (BlindType, error) {
@@ -42,7 +43,7 @@ func LoadGameFromFile(path string, handler EventHandler) (*Game, error) {
 		return nil, err
 	}
 
-	if save.SaveVersion != 1 {
+	if save.SaveVersion != 1 && save.SaveVersion != 2 {
 		return nil, fmt.Errorf("unsupported save version: %d", save.SaveVersion)
 	}
 
@@ -58,6 +59,24 @@ func LoadGameFromFile(path string, handler EventHandler) (*Game, error) {
 	}
 	g.currentBlind = bt
 	g.money = save.CurrentMoney
+
+	// Load hand levels
+	if save.SaveVersion >= 2 && save.HandLevels != nil {
+		g.handLevels = make(map[string]int)
+		for _, eval := range handEvaluators {
+			if lvl, ok := save.HandLevels[eval.Name()]; ok && lvl > 0 {
+				g.handLevels[eval.Name()] = lvl
+			} else {
+				g.handLevels[eval.Name()] = 1
+			}
+		}
+	} else {
+		// Version 1 save: default all levels to 1
+		g.handLevels = make(map[string]int)
+		for _, eval := range handEvaluators {
+			g.handLevels[eval.Name()] = 1
+		}
+	}
 
 	g.jokers = []Joker{}
 	for _, name := range save.CurrentJokers {
@@ -75,12 +94,13 @@ func LoadGameFromFile(path string, handler EventHandler) (*Game, error) {
 // Save writes the current game state to a timestamped JSON file
 func (g *Game) Save() (string, error) {
 	save := saveFile{
-		SaveVersion:   1,
+		SaveVersion:   2,
 		Seed:          GetSeed(),
 		CurrentAnte:   g.currentAnte,
 		CurrentBlind:  g.currentBlind.String(),
 		CurrentMoney:  g.money,
 		CurrentJokers: make([]string, len(g.jokers)),
+		HandLevels:    g.handLevels,
 	}
 
 	for i, joker := range g.jokers {

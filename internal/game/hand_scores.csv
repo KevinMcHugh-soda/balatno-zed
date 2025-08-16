@@ -1,11 +1,11 @@
-hand,base,mult
-High Card,5,1
-Pair,10,2
-Two Pair,20,2
-Three of a Kind,30,3
-Straight,30,4
-Flush,35,4
-Full House,40,4
-Four of a Kind,60,7
-Straight Flush,100,8
-Royal Flush,100,8
+hand,level1,level2,level3,level4,level5,mult
+High Card,5,10,15,20,25,1
+Pair,10,15,20,25,30,2
+Two Pair,20,25,30,35,40,2
+Three of a Kind,30,35,40,45,50,3
+Straight,30,35,40,45,50,4
+Flush,35,40,45,50,55,4
+Full House,40,45,50,55,60,4
+Four of a Kind,60,65,70,75,80,7
+Straight Flush,100,105,110,115,120,8
+Royal Flush,100,105,110,115,120,8
