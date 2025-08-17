@@ -20,20 +20,20 @@ small,big,boss
 - Values: Points required to complete that blind
 
 ### `hand_scores.csv` - Poker Hand Values
-Controls the base score and multiplier for each poker hand type.
+Controls the base score per level and multiplier for each poker hand type.
 
 **Format:**
 ```csv
-hand,base,mult
-High Card,5,1
-Pair,10,2
-Two Pair,20,2
+hand,level1,level2,level3,level4,level5,mult
+High Card,5,10,15,20,25,1
+Pair,10,15,20,25,30,2
+Two Pair,20,25,30,35,40,2
 ...
 ```
 
 - Each row represents one poker hand type
-- Columns: `hand` (exact name), `base` (base score), `mult` (multiplier)
-- Final score = (base + card values) × mult
+- Columns: `hand` (exact name), `level1`-`level5` (base score per hand level), `mult` (multiplier)
+- Final score = (base at current level + card values) × mult
 
 ## 🎯 Current Default Values
 
@@ -49,7 +49,7 @@ Two Pair,20,2
 | 7    | 750         | 1125      | 1500       |
 | 8    | 825         | 1237      | 1650       |
 
-### Hand Scores
+### Hand Scores (Level 1)
 | Hand Type | Base Score | Multiplier |
 |-----------|------------|------------|
 | High Card | 5 | 1x |

@@ -62,10 +62,11 @@ func TestReplayFaceCards(t *testing.T) {
 
 	cards := []Card{{Rank: Jack, Suit: Hearts}, {Rank: Five, Suit: Clubs}}
 	hand := Hand{Cards: cards}
-	evaluator, _, cardValues, baseScore := EvaluateHand(hand)
+	evaluator, _, cardValues, baseScore, baseMult := EvaluateHand(hand, nil)
 
 	cardsForJokers, extraValue := ApplyReplayCardEffects([]Joker{replayJoker, bonusJoker}, cards)
 	cardValues += extraValue
+
 	chips, mult, factor := CalculateJokerHandBonus([]Joker{replayJoker, bonusJoker}, evaluator.Name(), cardsForJokers)
 	finalBase := baseScore + chips
 	finalMult := (evaluator.Multiplier() + mult) * factor

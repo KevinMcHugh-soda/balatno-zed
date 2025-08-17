@@ -9,12 +9,13 @@ import (
 
 func TestLoadGameFromFile(t *testing.T) {
 	save := saveFile{
-		SaveVersion:   1,
+		SaveVersion:   2,
 		Seed:          123,
 		CurrentAnte:   2,
 		CurrentBlind:  BigBlind.String(),
 		CurrentMoney:  10,
 		CurrentJokers: []string{"The Golden Joker"},
+		HandLevels:    map[string]int{"Pair": 2},
 	}
 
 	tmp, err := os.CreateTemp("", "save*.json")
@@ -45,6 +46,9 @@ func TestLoadGameFromFile(t *testing.T) {
 	if len(g.jokers) != 1 || g.jokers[0].Name != "The Golden Joker" {
 		t.Fatalf("jokers = %#v, want The Golden Joker", g.jokers)
 	}
+	if g.handLevels["Pair"] != 2 {
+		t.Errorf("hand level Pair = %d, want 2", g.handLevels["Pair"])
+	}
 
 	SetSeed(123)
 	expected := NewGame(NewLoggerEventHandler())
@@ -58,6 +62,7 @@ func TestLoadGameFromFile(t *testing.T) {
 func TestSaveGameToFile(t *testing.T) {
 	SetSeed(456)
 	g := NewGame(NewLoggerEventHandler())
+	g.LevelUpHand("Pair")
 
 	filename, err := g.Save()
 	if err != nil {
@@ -89,5 +94,8 @@ func TestSaveGameToFile(t *testing.T) {
 	}
 	if len(save.CurrentJokers) != len(g.jokers) {
 		t.Errorf("jokers = %v, want %v", save.CurrentJokers, g.jokers)
+	}
+	if save.HandLevels["Pair"] != g.handLevels["Pair"] {
+		t.Errorf("hand level saved = %d, want %d", save.HandLevels["Pair"], g.handLevels["Pair"])
 	}
 }

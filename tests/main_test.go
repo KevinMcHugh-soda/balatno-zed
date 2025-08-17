@@ -137,7 +137,7 @@ func TestEvaluateHandHighCard(t *testing.T) {
 		{Rank: game.Nine, Suit: game.Diamonds},
 	}}
 
-	evaluator, score, cardValues, baseScore := game.EvaluateHand(hand)
+	evaluator, score, cardValues, baseScore, _ := game.EvaluateHand(hand, nil)
 
 	if evaluator.Name() != "High Card" {
 		t.Errorf("game.EvaluateHand(high card) handType = %v, want High Card", evaluator.Name())
@@ -160,7 +160,7 @@ func TestEvaluateHandPair(t *testing.T) {
 		{Rank: game.King, Suit: game.Diamonds},
 	}}
 
-	evaluator, score, cardValues, baseScore := game.EvaluateHand(hand)
+	evaluator, score, cardValues, baseScore, _ := game.EvaluateHand(hand, nil)
 
 	if evaluator.Name() != "Pair" {
 		t.Errorf("game.EvaluateHand(pair) handType = %v, want Pair", evaluator.Name())
@@ -184,7 +184,7 @@ func TestEvaluateHandTwoPair(t *testing.T) {
 		{Rank: game.King, Suit: game.Spades},
 	}}
 
-	evaluator, score, cardValues, baseScore := game.EvaluateHand(hand)
+	evaluator, score, cardValues, baseScore, _ := game.EvaluateHand(hand, nil)
 
 	if evaluator.Name() != "Two Pair" {
 		t.Errorf("game.EvaluateHand(two pair) handType = %v, want Two Pair", evaluator.Name())
@@ -200,6 +200,31 @@ func TestEvaluateHandTwoPair(t *testing.T) {
 	}
 }
 
+func TestEvaluateHandTwoPairLevel2(t *testing.T) {
+	hand := game.Hand{Cards: []game.Card{
+		{Rank: game.Seven, Suit: game.Hearts},
+		{Rank: game.Seven, Suit: game.Clubs},
+		{Rank: game.King, Suit: game.Diamonds},
+		{Rank: game.King, Suit: game.Spades},
+	}}
+
+	levels := map[string]int{"Two Pair": 2}
+	evaluator, score, cardValues, baseScore, _ := game.EvaluateHand(hand, levels)
+
+	if evaluator.Name() != "Two Pair" {
+		t.Errorf("game.EvaluateHand(two pair lvl2) handType = %v, want Two Pair", evaluator.Name())
+	}
+	if baseScore != 25 {
+		t.Errorf("game.EvaluateHand(two pair lvl2) baseScore = %v, want 25", baseScore)
+	}
+	if cardValues != 34 { // 7 + 7 + 10 + 10
+		t.Errorf("game.EvaluateHand(two pair lvl2) cardValues = %v, want 34", cardValues)
+	}
+	if score != 118 { // (25 + 34) * 2
+		t.Errorf("game.EvaluateHand(two pair lvl2) score = %v, want 118", score)
+	}
+}
+
 func TestEvaluateHandThreeOfAKind(t *testing.T) {
 	hand := game.Hand{Cards: []game.Card{
 		{Rank: game.Seven, Suit: game.Hearts},
@@ -208,7 +233,7 @@ func TestEvaluateHandThreeOfAKind(t *testing.T) {
 		{Rank: game.King, Suit: game.Spades},
 	}}
 
-	evaluator, score, cardValues, baseScore := game.EvaluateHand(hand)
+	evaluator, score, cardValues, baseScore, _ := game.EvaluateHand(hand, nil)
 
 	if evaluator.Name() != "Three of a Kind" {
 		t.Errorf("game.EvaluateHand(three of a kind) handType = %v, want Three of a Kind", evaluator.Name())
@@ -233,7 +258,7 @@ func TestEvaluateHandStraight(t *testing.T) {
 		{Rank: game.Nine, Suit: game.Hearts},
 	}}
 
-	evaluator, score, cardValues, baseScore := game.EvaluateHand(hand)
+	evaluator, score, cardValues, baseScore, _ := game.EvaluateHand(hand, nil)
 
 	if evaluator.Name() != "Straight" {
 		t.Errorf("game.EvaluateHand(straight) handType = %v, want Straight", evaluator.Name())
@@ -258,7 +283,7 @@ func TestEvaluateHandFlush(t *testing.T) {
 		{Rank: game.King, Suit: game.Hearts},
 	}}
 
-	evaluator, score, cardValues, baseScore := game.EvaluateHand(hand)
+	evaluator, score, cardValues, baseScore, _ := game.EvaluateHand(hand, nil)
 
 	if evaluator.Name() != "Flush" {
 		t.Errorf("game.EvaluateHand(flush) handType = %v, want Flush", evaluator.Name())
@@ -283,7 +308,7 @@ func TestEvaluateHandFullHouse(t *testing.T) {
 		{Rank: game.King, Suit: game.Hearts},
 	}}
 
-	evaluator, score, cardValues, baseScore := game.EvaluateHand(hand)
+	evaluator, score, cardValues, baseScore, _ := game.EvaluateHand(hand, nil)
 
 	if evaluator.Name() != "Full House" {
 		t.Errorf("game.EvaluateHand(full house) handType = %v, want Full House", evaluator.Name())
@@ -308,7 +333,7 @@ func TestEvaluateHandFourOfAKind(t *testing.T) {
 		{Rank: game.King, Suit: game.Hearts},
 	}}
 
-	evaluator, score, cardValues, baseScore := game.EvaluateHand(hand)
+	evaluator, score, cardValues, baseScore, _ := game.EvaluateHand(hand, nil)
 
 	if evaluator.Name() != "Four of a Kind" {
 		t.Errorf("game.EvaluateHand(four of a kind) handType = %v, want Four of a Kind", evaluator.Name())
@@ -333,7 +358,7 @@ func TestEvaluateHandStraightFlush(t *testing.T) {
 		{Rank: game.Nine, Suit: game.Hearts},
 	}}
 
-	evaluator, score, cardValues, baseScore := game.EvaluateHand(hand)
+	evaluator, score, cardValues, baseScore, _ := game.EvaluateHand(hand, nil)
 
 	if evaluator.Name() != "Straight Flush" {
 		t.Errorf("game.EvaluateHand(straight flush) handType = %v, want Straight Flush", evaluator.Name())
@@ -358,7 +383,7 @@ func TestEvaluateHandRoyalFlush(t *testing.T) {
 		{Rank: game.Ace, Suit: game.Hearts},
 	}}
 
-	evaluator, score, cardValues, baseScore := game.EvaluateHand(hand)
+	evaluator, score, cardValues, baseScore, _ := game.EvaluateHand(hand, nil)
 
 	if evaluator.Name() != "Royal Flush" {
 		t.Errorf("game.EvaluateHand(royal flush) handType = %v, want Royal Flush", evaluator.Name())
@@ -379,7 +404,7 @@ func TestEvaluateHandSingleCard(t *testing.T) {
 		{Rank: game.Ace, Suit: game.Hearts},
 	}}
 
-	evaluator, score, cardValues, baseScore := game.EvaluateHand(hand)
+	evaluator, score, cardValues, baseScore, _ := game.EvaluateHand(hand, nil)
 
 	if evaluator.Name() != "High Card" {
 		t.Errorf("game.EvaluateHand(single card) handType = %v, want High Card", evaluator.Name())
@@ -398,7 +423,7 @@ func TestEvaluateHandSingleCard(t *testing.T) {
 func TestEvaluateHandEmptyHand(t *testing.T) {
 	hand := game.Hand{Cards: []game.Card{}}
 
-	evaluator, score, cardValues, baseScore := game.EvaluateHand(hand)
+	evaluator, score, cardValues, baseScore, _ := game.EvaluateHand(hand, nil)
 
 	if evaluator.Name() != "High Card" {
 		t.Errorf("game.EvaluateHand(empty hand) handType = %v, want High Card", evaluator.Name())
@@ -424,7 +449,7 @@ func TestEvaluateHandWheelStraight(t *testing.T) {
 		{Rank: game.Five, Suit: game.Hearts},
 	}}
 
-	evaluator, score, cardValues, baseScore := game.EvaluateHand(hand)
+	evaluator, score, cardValues, baseScore, _ := game.EvaluateHand(hand, nil)
 
 	if evaluator.Name() != "Straight" {
 		t.Errorf("game.EvaluateHand(wheel straight) handType = %v, want Straight", evaluator.Name())
@@ -460,54 +485,6 @@ func TestHandEvaluatorNames(t *testing.T) {
 	for _, tt := range tests {
 		if got := tt.evaluator.Name(); got != tt.expected {
 			t.Errorf("game.HandEvaluator.Name() = %v, want %v", got, tt.expected)
-		}
-	}
-}
-
-func TestHandEvaluatorBaseScore(t *testing.T) {
-	tests := []struct {
-		evaluator game.HandEvaluator
-		expected  int
-	}{
-		{&game.HighCardEvaluator{}, 5},
-		{&game.PairEvaluator{}, 10},
-		{&game.TwoPairEvaluator{}, 20},
-		{&game.ThreeOfAKindEvaluator{}, 30},
-		{&game.StraightEvaluator{}, 30},
-		{&game.FlushEvaluator{}, 35},
-		{&game.FullHouseEvaluator{}, 40},
-		{&game.FourOfAKindEvaluator{}, 60},
-		{&game.StraightFlushEvaluator{}, 100},
-		{&game.RoyalFlushEvaluator{}, 100},
-	}
-
-	for _, tt := range tests {
-		if got := tt.evaluator.BaseScore(); got != tt.expected {
-			t.Errorf("game.HandEvaluator.BaseScore() = %v, want %v", got, tt.expected)
-		}
-	}
-}
-
-func TestHandEvaluatorMultiplier(t *testing.T) {
-	tests := []struct {
-		evaluator game.HandEvaluator
-		expected  int
-	}{
-		{&game.HighCardEvaluator{}, 1},
-		{&game.PairEvaluator{}, 2},
-		{&game.TwoPairEvaluator{}, 2},
-		{&game.ThreeOfAKindEvaluator{}, 3},
-		{&game.StraightEvaluator{}, 4},
-		{&game.FlushEvaluator{}, 4},
-		{&game.FullHouseEvaluator{}, 4},
-		{&game.FourOfAKindEvaluator{}, 7},
-		{&game.StraightFlushEvaluator{}, 8},
-		{&game.RoyalFlushEvaluator{}, 8},
-	}
-
-	for _, tt := range tests {
-		if got := tt.evaluator.Multiplier(); got != tt.expected {
-			t.Errorf("game.HandEvaluator.Multiplier() = %v, want %v", got, tt.expected)
 		}
 	}
 }
@@ -612,7 +589,7 @@ func TestEvaluateHandTwoCards(t *testing.T) {
 		{Rank: game.King, Suit: game.Spades},
 	}}
 
-	evaluator, score, cardValues, baseScore := game.EvaluateHand(hand)
+	evaluator, score, cardValues, baseScore, _ := game.EvaluateHand(hand, nil)
 
 	if evaluator.Name() != "High Card" {
 		t.Errorf("game.EvaluateHand(two cards) handType = %v, want High Card", evaluator.Name())
@@ -636,7 +613,7 @@ func TestEvaluateHandThreeCards(t *testing.T) {
 		{Rank: game.Queen, Suit: game.Diamonds},
 	}}
 
-	evaluator, score, cardValues, baseScore := game.EvaluateHand(hand)
+	evaluator, score, cardValues, baseScore, _ := game.EvaluateHand(hand, nil)
 
 	if evaluator.Name() != "High Card" {
 		t.Errorf("game.EvaluateHand(three cards) handType = %v, want High Card", evaluator.Name())
@@ -661,7 +638,7 @@ func TestEvaluateHandFourCards(t *testing.T) {
 		{Rank: game.Jack, Suit: game.Hearts},
 	}}
 
-	evaluator, _, _, _ := game.EvaluateHand(hand)
+	evaluator, _, _, _, _ := game.EvaluateHand(hand, nil)
 
 	// Should not be a flush since we need exactly 5 cards
 	if evaluator.Name() != "High Card" {
@@ -679,7 +656,7 @@ func TestEvaluateHandBroadwayStraight(t *testing.T) {
 		{Rank: game.Ace, Suit: game.Hearts},
 	}}
 
-	evaluator, score, cardValues, baseScore := game.EvaluateHand(hand)
+	evaluator, score, cardValues, baseScore, _ := game.EvaluateHand(hand, nil)
 
 	if evaluator.Name() != "Straight" {
 		t.Errorf("game.EvaluateHand(broadway straight) handType = %v, want Straight", evaluator.Name())
@@ -705,7 +682,7 @@ func TestEvaluateHandAlmostStraight(t *testing.T) {
 		{Rank: game.Ten, Suit: game.Hearts},
 	}}
 
-	evaluator, _, _, _ := game.EvaluateHand(hand)
+	evaluator, _, _, _, _ := game.EvaluateHand(hand, nil)
 
 	if evaluator.Name() != "High Card" {
 		t.Errorf("game.EvaluateHand(almost straight) handType = %v, want High Card", evaluator.Name())

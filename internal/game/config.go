@@ -15,11 +15,11 @@ type AnteRequirement struct {
 	Boss  int
 }
 
-// HandScore represents the base score and multiplier for a hand type
+// HandScore represents the base scores per level and multiplier for a hand type
 type HandScore struct {
-	Name       string
-	BaseScore  int
-	Multiplier int
+	Name        string
+	LevelScores []int
+	Multiplier  int
 }
 
 // Config holds all game configuration loaded from CSV files
@@ -120,29 +120,38 @@ func (c *Config) loadHandScores() error {
 		return fmt.Errorf("hand_scores.csv must have at least a header and one data row")
 	}
 
-	// Skip header row
+	header := records[0]
+	if len(header) < 3 {
+		return fmt.Errorf("hand_scores.csv must have at least hand, one level, and mult columns")
+	}
+	levelCount := len(header) - 2 // subtract hand name and multiplier
+
 	for i := 1; i < len(records); i++ {
 		record := records[i]
-		if len(record) != 3 {
-			return fmt.Errorf("hand_scores.csv row %d must have exactly 3 columns", i+1)
+		if len(record) != len(header) {
+			return fmt.Errorf("hand_scores.csv row %d must have exactly %d columns", i+1, len(header))
 		}
 
 		handName := record[0]
 
-		baseScore, err := strconv.Atoi(record[1])
-		if err != nil {
-			return fmt.Errorf("invalid base score for %s in row %d: %v", handName, i+1, err)
+		levels := make([]int, levelCount)
+		for j := 0; j < levelCount; j++ {
+			baseScore, err := strconv.Atoi(record[j+1])
+			if err != nil {
+				return fmt.Errorf("invalid level %d base score for %s in row %d: %v", j+1, handName, i+1, err)
+			}
+			levels[j] = baseScore
 		}
 
-		multiplier, err := strconv.Atoi(record[2])
+		multiplier, err := strconv.Atoi(record[len(record)-1])
 		if err != nil {
 			return fmt.Errorf("invalid multiplier for %s in row %d: %v", handName, i+1, err)
 		}
 
 		c.HandScores[handName] = HandScore{
-			Name:       handName,
-			BaseScore:  baseScore,
-			Multiplier: multiplier,
+			Name:        handName,
+			LevelScores: levels,
+			Multiplier:  multiplier,
 		}
 	}
 
@@ -166,16 +175,16 @@ func (c *Config) setDefaultAnteRequirements() {
 // setDefaultHandScores sets hardcoded default hand scores
 func (c *Config) setDefaultHandScores() {
 	defaults := []HandScore{
-		{"High Card", 5, 1},
-		{"Pair", 10, 2},
-		{"Two Pair", 20, 2},
-		{"Three of a Kind", 30, 3},
-		{"Straight", 30, 4},
-		{"Flush", 35, 4},
-		{"Full House", 40, 4},
-		{"Four of a Kind", 60, 7},
-		{"Straight Flush", 100, 8},
-		{"Royal Flush", 100, 8},
+		{"High Card", []int{5, 10, 15, 20, 25}, 1},
+		{"Pair", []int{10, 15, 20, 25, 30}, 2},
+		{"Two Pair", []int{20, 25, 30, 35, 40}, 2},
+		{"Three of a Kind", []int{30, 35, 40, 45, 50}, 3},
+		{"Straight", []int{30, 35, 40, 45, 50}, 4},
+		{"Flush", []int{35, 40, 45, 50, 55}, 4},
+		{"Full House", []int{40, 45, 50, 55, 60}, 4},
+		{"Four of a Kind", []int{60, 65, 70, 75, 80}, 7},
+		{"Straight Flush", []int{100, 105, 110, 115, 120}, 8},
+		{"Royal Flush", []int{100, 105, 110, 115, 120}, 8},
 	}
 
 	for _, handScore := range defaults {
@@ -215,30 +224,41 @@ func GetAnteRequirement(ante int, blindType BlindType) int {
 	}
 }
 
-// GetHandScore returns the base score and multiplier for a hand type
-func GetHandScore(handName string) (int, int) {
+// GetHandScore returns the base score for a specific level and multiplier for a hand type
+func GetHandScore(handName string, level int) (int, int) {
+	if level < 1 {
+		level = 1
+	}
 	if gameConfig == nil {
 		// Fallback to hardcoded defaults
 		defaults := map[string]HandScore{
-			"High Card":       {BaseScore: 5, Multiplier: 1},
-			"Pair":            {BaseScore: 10, Multiplier: 2},
-			"Two Pair":        {BaseScore: 20, Multiplier: 2},
-			"Three of a Kind": {BaseScore: 30, Multiplier: 3},
-			"Straight":        {BaseScore: 30, Multiplier: 4},
-			"Flush":           {BaseScore: 35, Multiplier: 4},
-			"Full House":      {BaseScore: 40, Multiplier: 4},
-			"Four of a Kind":  {BaseScore: 60, Multiplier: 7},
-			"Straight Flush":  {BaseScore: 100, Multiplier: 8},
-			"Royal Flush":     {BaseScore: 100, Multiplier: 8},
+			"High Card":       {LevelScores: []int{5, 10, 15, 20, 25}, Multiplier: 1},
+			"Pair":            {LevelScores: []int{10, 15, 20, 25, 30}, Multiplier: 2},
+			"Two Pair":        {LevelScores: []int{20, 25, 30, 35, 40}, Multiplier: 2},
+			"Three of a Kind": {LevelScores: []int{30, 35, 40, 45, 50}, Multiplier: 3},
+			"Straight":        {LevelScores: []int{30, 35, 40, 45, 50}, Multiplier: 4},
+			"Flush":           {LevelScores: []int{35, 40, 45, 50, 55}, Multiplier: 4},
+			"Full House":      {LevelScores: []int{40, 45, 50, 55, 60}, Multiplier: 4},
+			"Four of a Kind":  {LevelScores: []int{60, 65, 70, 75, 80}, Multiplier: 7},
+			"Straight Flush":  {LevelScores: []int{100, 105, 110, 115, 120}, Multiplier: 8},
+			"Royal Flush":     {LevelScores: []int{100, 105, 110, 115, 120}, Multiplier: 8},
 		}
 		if score, exists := defaults[handName]; exists {
-			return score.BaseScore, score.Multiplier
+			idx := level - 1
+			if idx >= len(score.LevelScores) {
+				idx = len(score.LevelScores) - 1
+			}
+			return score.LevelScores[idx], score.Multiplier
 		}
 		return 5, 1 // Default to High Card values
 	}
 
 	if score, exists := gameConfig.HandScores[handName]; exists {
-		return score.BaseScore, score.Multiplier
+		idx := level - 1
+		if idx >= len(score.LevelScores) {
+			idx = len(score.LevelScores) - 1
+		}
+		return score.LevelScores[idx], score.Multiplier
 	}
 
 	// Fallback to High Card values

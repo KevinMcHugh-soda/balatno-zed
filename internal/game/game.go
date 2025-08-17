@@ -81,6 +81,7 @@ type Game struct {
 	currentBossRule   BossRule
 	money             int
 	jokers            []Joker
+	handLevels        map[string]int
 	rerollCost        int
 	eventEmitter      *SimpleEventEmitter
 }
@@ -119,6 +120,22 @@ func (g *Game) maxDiscards() int {
 	return max
 }
 
+// LevelUpHand increases the level of the specified hand type if possible
+func (g *Game) LevelUpHand(handName string) {
+	if g.handLevels == nil {
+		g.handLevels = make(map[string]int)
+	}
+	current := g.handLevels[handName]
+	score, ok := gameConfig.HandScores[handName]
+	if !ok {
+		g.handLevels[handName] = current + 1
+		return
+	}
+	if current < len(score.LevelScores) {
+		g.handLevels[handName] = current + 1
+	}
+}
+
 // applyBossCardModifiers adjusts card values based on current boss rule
 func (g *Game) applyBossCardModifiers(cards []Card, cardValues int) int {
 	if g.currentBlind != BossBlind {
@@ -148,18 +165,19 @@ func NewGame(eventHandler EventHandler) *Game {
 	ShuffleDeck(deck)
 
 	game := &Game{
-		totalScore:      0,
-		handsPlayed:     0,
-		discardsUsed:    0,
-		deck:            deck,
-		deckIndex:       0,
-		sortMode:        SortByRank,
-		currentAnte:     1,
-		currentBlind:    SmallBlind,
-		money:           StartingMoney,
-		jokers:          []Joker{},
-		rerollCost:      5, // Initial reroll cost
-		eventEmitter:    NewEventEmitter(),
+		totalScore:   0,
+		handsPlayed:  0,
+		discardsUsed: 0,
+		deck:         deck,
+		deckIndex:    0,
+		sortMode:     SortByRank,
+		currentAnte:  1,
+		currentBlind: SmallBlind,
+		money:        StartingMoney,
+		jokers:       []Joker{},
+		handLevels:   make(map[string]int),
+		rerollCost:   5, // Initial reroll cost
+		eventEmitter: NewEventEmitter(),
 		currentBoss:     Boss{},
 		currentBossRule: BossRuleNone,
 	}
@@ -197,6 +215,11 @@ func NewGame(eventHandler EventHandler) *Game {
 	game.displayToOriginal = make([]int, len(game.playerCards))
 	for i := range game.playerCards {
 		game.displayToOriginal[i] = i
+	}
+
+	// Initialize hand levels to 1
+	for _, eval := range handEvaluators {
+		game.handLevels[eval.Name()] = 1
 	}
 
 	// Set the event handler
@@ -349,7 +372,7 @@ func (g *Game) handlePlayAction(params []string) {
 
 	// Evaluate the hand
 	hand := Hand{Cards: selectedCards}
-	evaluator, _, cardValues, baseScore := EvaluateHand(hand)
+	evaluator, _, cardValues, baseScore, mult := EvaluateHand(hand, g.handLevels)
 	cardValues += extraCardValue
 	cardValues = g.applyBossCardModifiers(selectedCards, cardValues)
 
@@ -363,16 +386,17 @@ func (g *Game) handlePlayAction(params []string) {
 
 	// Emit hand played event with all the details
 	g.eventEmitter.EmitEvent(HandPlayedEvent{
-		SelectedCards:   selectedCards,
-		HandType:        evaluator.Name(),
-		BaseScore:       baseScore,
-		CardValues:      cardValues,
-		Multiplier:      evaluator.Multiplier(),
-		JokerChips:      jokerChips,
-		JokerMult:       jokerMult,
+		SelectedCards: selectedCards,
+		HandType:      evaluator.Name(),
+		BaseScore:     baseScore,
+		CardValues:    cardValues,
+		Multiplier:    mult,
+		JokerChips:    jokerChips,
+		JokerMult:     jokerMult,
+		FinalScore:    finalScore,
+		NewTotalScore: g.totalScore + finalScore,
 		JokerMultFactor: jokerMultFactor,
 		FinalScore:      finalScore,
-		NewTotalScore:   g.totalScore + finalScore,
 	})
 
 	// Update game state
