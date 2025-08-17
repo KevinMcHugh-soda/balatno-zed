@@ -3,6 +3,7 @@ package game
 import (
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -67,7 +68,7 @@ func TestSaveGameToFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Save returned error: %v", err)
 	}
-	defer os.Remove(filename)
+	defer os.RemoveAll(filepath.Dir(filename))
 
 	data, err := os.ReadFile(filename)
 	if err != nil {

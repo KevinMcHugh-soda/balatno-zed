@@ -19,6 +19,7 @@ const (
 	PlayerActionReroll    = "reroll"
 	PlayerActionBuy       = "buy"
 	PlayerActionMoveJoker = "move_joker"
+	PlayerActionSellJoker = "sell_joker"
 )
 
 // EventHandler processes game events and decides how to present them
@@ -57,6 +58,7 @@ type GameStateChangedEvent struct {
 	Discards int
 	Money    int
 	Jokers   []Joker
+	Boss     string
 }
 
 func (e GameStateChangedEvent) EventType() string { return "game_state_changed" }
@@ -71,15 +73,16 @@ func (e CardsDealtEvent) EventType() string { return "cards_dealt" }
 
 // Player action events
 type HandPlayedEvent struct {
-	SelectedCards []Card
-	HandType      string
-	BaseScore     int
-	CardValues    int
-	Multiplier    int
-	JokerChips    int
-	JokerMult     int
-	FinalScore    int
-	NewTotalScore int
+	SelectedCards   []Card
+	HandType        string
+	BaseScore       int
+	CardValues      int
+	Multiplier      int
+	JokerChips      int
+	JokerMult       int
+	JokerMultFactor int
+	FinalScore      int
+	NewTotalScore   int
 }
 
 func (e HandPlayedEvent) EventType() string { return "hand_played" }
@@ -126,6 +129,7 @@ type NewBlindStartedEvent struct {
 	Blind    BlindType
 	Target   int
 	NewCards []Card
+	Boss     *Boss
 }
 
 func (e NewBlindStartedEvent) EventType() string { return "new_blind_started" }
@@ -224,7 +228,7 @@ func (e *SimpleEventEmitter) EmitGameStarted() {
 	e.EmitEvent(GameStartedEvent{})
 }
 
-func (e *SimpleEventEmitter) EmitGameState(ante int, blind BlindType, target, score, hands, discards, money int, jokers []Joker) {
+func (e *SimpleEventEmitter) EmitGameState(ante int, blind BlindType, target, score, hands, discards, money int, jokers []Joker, boss string) {
 	e.EmitEvent(GameStateChangedEvent{
 		Ante:     ante,
 		Blind:    blind,
@@ -234,6 +238,7 @@ func (e *SimpleEventEmitter) EmitGameState(ante int, blind BlindType, target, sc
 		Discards: discards,
 		Money:    money,
 		Jokers:   jokers,
+		Boss:     boss,
 	})
 }
 

@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"strings"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -204,5 +205,67 @@ func TestJokerReorder(t *testing.T) {
 
 	if m.gameState.Jokers[0].Name != "J2" {
 		t.Fatalf("expected J2 to move up, got %v", m.gameState.Jokers)
+	}
+}
+
+func TestBossBlindNameInGameInfo(t *testing.T) {
+	m := TUIModel{
+		gameState: game.GameStateChangedEvent{
+			Ante:     1,
+			Blind:    game.BossBlind,
+			Target:   100,
+			Score:    0,
+			Hands:    4,
+			Discards: 3,
+			Money:    0,
+			Boss:     "Hearts score zero",
+		},
+		mode:  GameMode{},
+		cards: []game.Card{},
+	}
+	content := GameMode{}.renderContent(m)
+	if !strings.Contains(content, "Boss Blind: Hearts score zero") {
+		t.Fatalf("boss blind name not found in game info: %s", content)
+  }
+}
+
+func TestJokerSell(t *testing.T) {
+	respChan := make(chan PlayerActionResponse, 1)
+	m := TUIModel{
+		gameState: game.GameStateChangedEvent{
+			Money:  10,
+			Jokers: []game.Joker{{Name: "J1", Price: 6}, {Name: "J2", Price: 8}},
+		},
+		mode:                 GameMode{},
+		actionRequestPending: &PlayerActionRequest{ResponseChan: respChan},
+	}
+
+	model, _ := m.handleKeyPress(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+	m = *(model.(*TUIModel))
+	model, _ = m.handleKeyPress(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'1'}})
+	m = *(model.(*TUIModel))
+	model, _ = m.handleKeyPress(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}})
+	m = *(model.(*TUIModel))
+	resp := <-respChan
+	if resp.Action != game.PlayerActionSellJoker || len(resp.Params) != 1 || resp.Params[0] != "1" {
+		t.Fatalf("unexpected response: %+v", resp)
+	}
+
+	if len(m.gameState.Jokers) != 1 || m.gameState.Jokers[0].Name != "J2" {
+		t.Fatalf("expected remaining joker to be J2, got %v", m.gameState.Jokers)
+  }
+}
+
+func TestShoppingModeRendersOwnedJokers(t *testing.T) {
+	m := TUIModel{
+		gameState: game.GameStateChangedEvent{
+			Jokers: []game.Joker{{Name: "J1", Description: "desc"}},
+		},
+		shopInfo: &game.ShopOpenedEvent{Money: 10, RerollCost: 5},
+	}
+	sm := ShoppingMode{}
+	output := sm.renderContent(m)
+	if !strings.Contains(output, "J1: desc") {
+		t.Fatalf("expected owned joker to be rendered, got %s", output)
 	}
 }

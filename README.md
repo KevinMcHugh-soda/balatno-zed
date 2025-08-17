@@ -39,11 +39,11 @@ go run . -seed 42
 go run . -tui -seed 42
 
 # Load a saved game
-go run . -load save.json
+go run . -load saves/save.json
 ```
 
 # Automatic saving
-When you quit the game or it times out, the current state is saved to a timestamped JSON file like `2025-08-11T16:38:12Z.json`. The file will not be written if the process is interrupted with `Ctrl+C`.
+When you quit the game or it times out, the current state is saved to the `saves/` directory as a timestamped JSON file like `saves/2025-08-11T16:38:12Z.json`. The file will not be written if the process is interrupted with `Ctrl+C`.
 
 The JSON file should contain:
 
@@ -90,8 +90,8 @@ BALATRO_TIMEOUT=300 ./balatro -tui
 - **8 Antes** total to complete the game
 - Each Ante contains **3 Blinds** in sequence:
   - 🔸 **Small Blind** - Base difficulty
-  - 🔶 **Big Blind** - 1.5x harder than Small Blind  
-  - 💀 **Boss Blind** - 2x harder than Small Blind (special rules coming soon!)
+  - 🔶 **Big Blind** - 1.5x harder than Small Blind
+  - 💀 **Boss Blind** - 2x harder than Small Blind with random boss effects (e.g. hearts score zero or reduced hand size)
 - **🏪 Shop** appears between each blind where you can spend money on Jokers
 
 ### Each Blind Challenge
@@ -194,14 +194,16 @@ Two Pair,20,25,30,35,40,2
 jokers:
   - name: "The Golden Joker"
     value: 6
-    effect: "AddMoney"
-    effect_magnitude: 4
-    hand_matching_rule: "None"
-    card_matching_rule: "None"
     description: "Earn $4 at the end of each Blind"
+    effects:
+      - effect: "AddMoney"
+        effect_magnitude: 4
+        hand_matching_rule: "None"
+        card_matching_rule: "None"
 ```
 - **YAML format** for complex joker configurations
 - **Effect types**: `AddMoney`, `AddChips`, `AddMult`, `ReplayCard`
+- **Composite effects**: Combine multiple effects under `effects`
 - **Hand matching**: Trigger jokers based on hand types (pairs, straights, etc.)
 - **Card matching**: Award bonuses per matching card (Aces, Spades, face cards, etc.)
 - **Runtime loading** with fallback to defaults
@@ -276,6 +278,9 @@ Between each blind, you visit the **🏪 Shop** where you can:
 - **Chip Collector** ($5): +30 chips for hands containing pairs
 - **Double Down** ($4): +8 mult for hands containing pairs
 - **Straight Shooter** ($8): +100 chips for hands containing straights
+
+### YAML Boss System
+**💀 Configurable via `bosses.yaml`** - Define boss names and effects. Bosses marked with `final: true` only appear on antes divisible by 8.
 
 ### Money Management Tips
 - **Efficiency Rewards**: Unused hands/discards = more money
@@ -390,6 +395,8 @@ The codebase is organized into focused, modular files:
 - **`game.go`** - Ante/Blind progression, game loop, and player interaction
 - **`jokers.go`** - YAML joker system, shop mechanics, and effect processing
 - **`jokers.yaml`** - Joker definitions and balance configuration
+- **`bosses.go`** - YAML boss system and selection logic
+- **`bosses.yaml`** - Boss definitions
 
 ### Ante/Blind System
 
@@ -447,10 +454,10 @@ type HandEvaluator interface {
 - **🎭 Blind Indicators**: Unique emojis for each blind type (🔸🔶💀)
 - **🎆 Celebrations**: Escalating victory animations with detailed reward breakdowns
 - **💰 Money Tracking**: Always-visible money counter in game status
-- **🏪 Shop Interface**: Clean shop display with affordability indicators
+- **🏪 Shop Interface**: Clean shop display with affordability indicators and current joker list
 - **📍 Clear Status**: Ante, blind type, money, and requirements always visible
 - **🎨 Colorful Output**: Rich terminal formatting for better UX
-- **🔀 Joker Reordering**: Adjust joker priority directly from the TUI
+- **🔀 Joker Reordering & Selling**: Adjust joker priority and sell unwanted jokers for half price directly from the TUI
 
 ## Implementation Notes
 
@@ -467,7 +474,7 @@ type HandEvaluator interface {
 
 This implementation includes core progression with **YAML-configurable joker systems**. The full Balatro experience also includes:
 
-- **Boss Blind Effects**: Special rules and constraints for Boss Blinds *(coming soon!)*
+- **Boss Blind Effects**: Random modifiers like disabling hearts or altering hand size
 - **Extended Joker Effects**: Conditional triggers, card-specific bonuses, deck modifications
 - **Advanced Shop Items**: Tarot cards, Planet cards, and card packs
 - **Card Enhancements**: Foil, holographic, and other card modifications
@@ -475,7 +482,7 @@ This implementation includes core progression with **YAML-configurable joker sys
 - **Stakes**: Higher difficulty modes with additional constraints
 - **Endless Mode**: Continue beyond Ante 8 for ultimate challenges
 
-**✅ Currently Implemented**: Ante progression, money system, shop, **YAML joker system with 15+ configurable jokers**
+**✅ Currently Implemented**: Ante progression, money system, shop, **YAML joker system with 15+ configurable jokers**, **YAML-configured bosses with in-game effects**
 
 ---
 

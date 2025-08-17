@@ -1,6 +1,9 @@
 package game
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 // testEventHandler is a minimal EventHandler implementation for testing.
 type testEventHandler struct {
@@ -155,10 +158,40 @@ func TestShowShopWithItems(t *testing.T) {
 	}
 }
 
+// TestHandleSellJokerAction verifies selling a joker refunds half its price and removes it.
+func TestHandleSellJokerAction(t *testing.T) {
+	handler := &testEventHandler{}
+	g := &Game{
+		money:        10,
+		jokers:       []Joker{{Name: "J1", Price: 6}, {Name: "J2", Price: 8}},
+		eventEmitter: NewEventEmitter(),
+	}
+	g.eventEmitter.SetEventHandler(handler)
+
+	g.handleSellJokerAction([]string{"1"})
+
+	if g.money != 13 {
+		t.Fatalf("expected money to be 13 after sale, got %d", g.money)
+	}
+	if len(g.jokers) != 1 || g.jokers[0].Name != "J2" {
+		t.Fatalf("expected remaining joker to be J2, got %v", g.jokers)
+	}
+
+	soldMsg := false
+	for _, e := range handler.events {
+		if m, ok := e.(MessageEvent); ok && strings.Contains(m.Message, "Sold J1") {
+			soldMsg = true
+		}
+	}
+	if !soldMsg {
+		t.Fatalf("expected MessageEvent for sold joker")
+	}
+}
+
 // TestHandSizeWithJoker verifies that a joker can increase the hand size.
 func TestHandSizeWithJoker(t *testing.T) {
 	g := &Game{
-		jokers: []Joker{{Effect: AddHandSize, EffectMagnitude: 2}},
+		jokers: []Joker{{Effects: []JokerEffectConfig{{Effect: AddHandSize, EffectMagnitude: 2}}}},
 	}
 	if got := g.handSize(); got != InitialCards+2 {
 		t.Fatalf("expected hand size %d, got %d", InitialCards+2, got)
@@ -173,7 +206,7 @@ func TestDiscardLimitWithJoker(t *testing.T) {
 		deck:         deck,
 		deckIndex:    InitialCards,
 		playerCards:  deck[:InitialCards],
-		jokers:       []Joker{{Effect: AddDiscards, EffectMagnitude: 2}},
+		jokers:       []Joker{{Effects: []JokerEffectConfig{{Effect: AddDiscards, EffectMagnitude: 2}}}},
 		eventEmitter: NewEventEmitter(),
 	}
 	g.eventEmitter.SetEventHandler(handler)
@@ -189,5 +222,45 @@ func TestDiscardLimitWithJoker(t *testing.T) {
 	g.handleDiscardAction([]string{"1"})
 	if g.discardsUsed != 5 {
 		t.Fatalf("discard limit not enforced, got %d", g.discardsUsed)
+	}
+}
+
+// TestBossNoHeartsDisablesScoring verifies that hearts don't contribute during Boss Blind.
+func TestBossNoHeartsDisablesScoring(t *testing.T) {
+	handler := &testEventHandler{}
+	deck := NewDeck()
+	g := &Game{
+		currentBlind:    BossBlind,
+		currentBossRule: BossRuleNoHearts,
+		deck:            deck,
+		deckIndex:       7,
+		playerCards: []Card{
+			{Rank: Ten, Suit: Hearts},
+			{Rank: Two, Suit: Clubs},
+			{Rank: Three, Suit: Diamonds},
+			{Rank: Four, Suit: Spades},
+			{Rank: Five, Suit: Hearts},
+			{Rank: Six, Suit: Clubs},
+			{Rank: Seven, Suit: Diamonds},
+		},
+		eventEmitter: NewEventEmitter(),
+	}
+	g.eventEmitter.SetEventHandler(handler)
+
+	g.handlePlayAction([]string{"1"})
+
+	if g.totalScore != 5 {
+		t.Fatalf("expected score 5 with hearts disabled, got %d", g.totalScore)
+	}
+}
+
+// TestBossHandSizeReduction verifies boss rule can reduce hand size.
+func TestBossHandSizeReduction(t *testing.T) {
+	g := &Game{
+		currentBlind:    BossBlind,
+		currentBossRule: BossRuleMinusHand,
+	}
+	if got := g.handSize(); got != InitialCards-1 {
+		t.Fatalf("expected hand size %d, got %d", InitialCards-1, got)
 	}
 }

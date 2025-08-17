@@ -74,7 +74,11 @@ func (h *LoggerEventHandler) handleGameStarted() {
 }
 
 func (h *LoggerEventHandler) handleGameStateChanged(e GameStateChangedEvent) {
-	fmt.Printf("🎯 Ante %d - %s | Target: %d | Current Score: %d\n", e.Ante, e.Blind, e.Target, e.Score)
+	blindName := e.Blind.String()
+	if e.Blind == BossBlind && e.Boss != "" {
+		blindName = fmt.Sprintf("%s: %s", blindName, e.Boss)
+	}
+	fmt.Printf("🎯 Ante %d - %s | Target: %d | Current Score: %d\n", e.Ante, blindName, e.Target, e.Score)
 	fmt.Printf("🎴 Hands Left: %d | 🗑️ Discards Left: %d | 💰 Money: $%d\n", e.Hands, e.Discards, e.Money)
 
 	if len(e.Jokers) > 0 {
@@ -113,7 +117,7 @@ func (h *LoggerEventHandler) handleHandPlayed(e HandPlayedEvent) {
 	fmt.Printf("Your hand: %s\n", strings.Join(handStr, " "))
 	fmt.Printf("Hand type: %s\n", e.HandType)
 
-	if e.JokerChips > 0 || e.JokerMult > 0 {
+	if e.JokerChips > 0 || e.JokerMult > 0 || e.JokerMultFactor > 1 {
 		fmt.Printf("Base Score: %d", e.BaseScore)
 		if e.JokerChips > 0 {
 			fmt.Printf(" + %d Joker Chips", e.JokerChips)
@@ -122,8 +126,15 @@ func (h *LoggerEventHandler) handleHandPlayed(e HandPlayedEvent) {
 		if e.JokerMult > 0 {
 			fmt.Printf(" + %d Joker Mult", e.JokerMult)
 		}
+		if e.JokerMultFactor > 1 {
+			fmt.Printf(" × %d Joker Mult", e.JokerMultFactor)
+		}
 		fmt.Println()
-		fmt.Printf("Final Score: (%d + %d) × %d = %d points\n", e.BaseScore+e.JokerChips, e.CardValues, e.Multiplier+e.JokerMult, e.FinalScore)
+		if e.JokerMultFactor > 1 {
+			fmt.Printf("Final Score: (%d + %d) × (%d + %d) × %d = %d points\n", e.BaseScore+e.JokerChips, e.CardValues, e.Multiplier, e.JokerMult, e.JokerMultFactor, e.FinalScore)
+		} else {
+			fmt.Printf("Final Score: (%d + %d) × %d = %d points\n", e.BaseScore+e.JokerChips, e.CardValues, e.Multiplier+e.JokerMult, e.FinalScore)
+		}
 	} else {
 		fmt.Printf("Base Score: %d | Card Values: %d | Mult: %dx\n", e.BaseScore, e.CardValues, e.Multiplier)
 		fmt.Printf("Final Score: (%d + %d) × %d = %d points\n", e.BaseScore, e.CardValues, e.Multiplier, e.FinalScore)
@@ -214,6 +225,9 @@ func (h *LoggerEventHandler) handleNewBlindStarted(e NewBlindStartedEvent) {
 
 	fmt.Printf("%s NOW ENTERING: %s (Ante %d) %s\n", blindEmoji, e.Blind, e.Ante, blindEmoji)
 	fmt.Printf("🎯 NEW TARGET: %d points\n", e.Target)
+	if e.Blind == BossBlind && e.Boss != nil {
+		fmt.Printf("👑 Boss: %s - %s\n", e.Boss.Name, e.Boss.Effect)
+	}
 	fmt.Println("🃏 Fresh hand dealt!")
 	fmt.Println(strings.Repeat("-", 40))
 	fmt.Println()

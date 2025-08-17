@@ -77,6 +77,8 @@ type Game struct {
 	currentAnte       int
 	currentBlind      BlindType
 	currentTarget     int
+	currentBoss       Boss
+	currentBossRule   BossRule
 	money             int
 	jokers            []Joker
 	handLevels        map[string]int
@@ -88,8 +90,18 @@ type Game struct {
 func (g *Game) handSize() int {
 	size := InitialCards
 	for _, j := range g.jokers {
-		if j.Effect == AddHandSize {
-			size += j.EffectMagnitude
+		for _, eff := range j.Effects {
+			if eff.Effect == AddHandSize {
+				size += eff.EffectMagnitude
+			}
+		}
+	}
+	if g.currentBlind == BossBlind {
+		switch g.currentBossRule {
+		case BossRuleMinusHand:
+			size--
+		case BossRulePlusHand:
+			size++
 		}
 	}
 	return size
@@ -99,8 +111,10 @@ func (g *Game) handSize() int {
 func (g *Game) maxDiscards() int {
 	max := MaxDiscards
 	for _, j := range g.jokers {
-		if j.Effect == AddDiscards {
-			max += j.EffectMagnitude
+		for _, eff := range j.Effects {
+			if eff.Effect == AddDiscards {
+				max += eff.EffectMagnitude
+			}
 		}
 	}
 	return max
@@ -120,6 +134,22 @@ func (g *Game) LevelUpHand(handName string) {
 	if current < len(score.LevelScores) {
 		g.handLevels[handName] = current + 1
 	}
+}
+
+// applyBossCardModifiers adjusts card values based on current boss rule
+func (g *Game) applyBossCardModifiers(cards []Card, cardValues int) int {
+	if g.currentBlind != BossBlind {
+		return cardValues
+	}
+	switch g.currentBossRule {
+	case BossRuleNoHearts:
+		for _, c := range cards {
+			if c.Suit == Hearts {
+				cardValues -= c.Rank.Value()
+			}
+		}
+	}
+	return cardValues
 }
 
 type PrintMode int
@@ -148,6 +178,8 @@ func NewGame(eventHandler EventHandler) *Game {
 		handLevels:   make(map[string]int),
 		rerollCost:   5, // Initial reroll cost
 		eventEmitter: NewEventEmitter(),
+		currentBoss:     Boss{},
+		currentBossRule: BossRuleNone,
 	}
 
 	// Initialize random seed once
@@ -162,6 +194,11 @@ func NewGame(eventHandler EventHandler) *Game {
 	// Load joker configurations
 	if err := LoadJokerConfigs(); err != nil {
 		// Joker config loading failed, but we have fallback defaults
+		fmt.Printf("Warning: %v\n", err)
+	}
+
+	// Load boss configurations
+	if err := LoadBossConfigs(); err != nil {
 		fmt.Printf("Warning: %v\n", err)
 	}
 
@@ -201,8 +238,12 @@ func (g *Game) Run() {
 		for g.handsPlayed < MaxHands && g.totalScore < g.currentTarget {
 			// Update display mapping and emit current state
 			g.updateDisplayToOriginalMapping()
+			bossName := ""
+			if g.currentBlind == BossBlind {
+				bossName = g.currentBossRule.Description()
+			}
 			g.eventEmitter.EmitGameState(g.currentAnte, g.currentBlind, g.currentTarget, g.totalScore,
-				MaxHands-g.handsPlayed, g.maxDiscards()-g.discardsUsed, g.money, g.jokers)
+				MaxHands-g.handsPlayed, g.maxDiscards()-g.discardsUsed, g.money, g.jokers, bossName)
 			g.eventEmitter.EmitCardsDealt(g.playerCards, g.displayToOriginal, g.sortMode)
 
 			action, params, quit := g.eventEmitter.handler.GetPlayerAction(g.discardsUsed < g.maxDiscards())
@@ -221,6 +262,8 @@ func (g *Game) Run() {
 				g.handleResortAction()
 			} else if action == PlayerActionMoveJoker {
 				g.handleMoveJokerAction(params)
+			} else if action == PlayerActionSellJoker {
+				g.handleSellJokerAction(params)
 			}
 		}
 
@@ -331,13 +374,14 @@ func (g *Game) handlePlayAction(params []string) {
 	hand := Hand{Cards: selectedCards}
 	evaluator, _, cardValues, baseScore, mult := EvaluateHand(hand, g.handLevels)
 	cardValues += extraCardValue
+	cardValues = g.applyBossCardModifiers(selectedCards, cardValues)
 
 	// Calculate joker bonuses using cards including replays
-	jokerChips, jokerMult := CalculateJokerHandBonus(g.jokers, evaluator.Name(), cardsForJokers)
+	jokerChips, jokerMult, jokerMultFactor := CalculateJokerHandBonus(g.jokers, evaluator.Name(), cardsForJokers)
 
 	// Apply joker bonuses to final score
 	finalBaseScore := baseScore + jokerChips
-	finalMult := mult + jokerMult
+	finalMult := (evaluator.Multiplier() + jokerMult) * jokerMultFactor
 	finalScore := (finalBaseScore + cardValues) * finalMult
 
 	// Emit hand played event with all the details
@@ -351,6 +395,8 @@ func (g *Game) handlePlayAction(params []string) {
 		JokerMult:     jokerMult,
 		FinalScore:    finalScore,
 		NewTotalScore: g.totalScore + finalScore,
+		JokerMultFactor: jokerMultFactor,
+		FinalScore:      finalScore,
 	})
 
 	// Update game state
@@ -496,11 +542,13 @@ func (g *Game) handleBlindCompletion() {
 		g.currentBlind = BigBlind
 	} else if g.currentBlind == BigBlind {
 		g.currentBlind = BossBlind
+		g.currentBossRule = randomBossRule()
 	} else {
 		// Completed Boss Blind, advance to next ante
 		oldAnte := g.currentAnte
 		g.currentAnte++
 		g.currentBlind = SmallBlind
+		g.currentBossRule = BossRuleNone
 		if g.currentAnte <= MaxAntes {
 			g.eventEmitter.EmitEvent(AnteCompletedEvent{
 				CompletedAnte: oldAnte,
@@ -517,6 +565,13 @@ func (g *Game) handleBlindCompletion() {
 		g.rerollCost = 5 // Reset reroll cost for new blind
 		g.currentTarget = GetAnteRequirement(g.currentAnte, g.currentBlind)
 
+		if g.currentBlind == BossBlind {
+			g.currentBoss = GetBossForAnte(g.currentAnte)
+			g.applyBossEffect()
+		} else {
+			g.currentBoss = Boss{}
+		}
+
 		// Shuffle and deal new hand
 		g.deckIndex = 0
 		ShuffleDeck(g.deck)
@@ -526,12 +581,20 @@ func (g *Game) handleBlindCompletion() {
 		g.deckIndex += handSize
 
 		// Show next blind info
+		var boss *Boss
+		if g.currentBlind == BossBlind {
+			boss = &g.currentBoss
+		}
 		g.eventEmitter.EmitEvent(NewBlindStartedEvent{
 			Ante:     g.currentAnte,
 			Blind:    g.currentBlind,
 			Target:   g.currentTarget,
 			NewCards: g.playerCards,
+			Boss:     boss,
 		})
+		if g.currentBlind == BossBlind {
+			g.eventEmitter.EmitInfo(fmt.Sprintf("Boss effect: %s", g.currentBossRule.Description()))
+		}
 
 		// Show shop between blinds
 		g.showShop()
@@ -647,6 +710,8 @@ func (g *Game) showShop() {
 			}
 		} else if action == PlayerActionMoveJoker {
 			g.handleMoveJokerAction(params)
+		} else if action == PlayerActionSellJoker {
+			g.handleSellJokerAction(params)
 		} else if action == PlayerActionBuy {
 			choice := params[0]
 			if choice, err := strconv.Atoi(choice); err == nil && choice >= 1 && choice <= len(shopItems) {
@@ -667,6 +732,12 @@ func (g *Game) showShop() {
 						Item:           NewShopItemData(selectedJoker, g.money+selectedJoker.Price),
 						RemainingMoney: g.money,
 					})
+					bossName := ""
+					if g.currentBlind == BossBlind {
+						bossName = g.currentBossRule.Description()
+					}
+					g.eventEmitter.EmitGameState(g.currentAnte, g.currentBlind, g.currentTarget, g.totalScore,
+						MaxHands-g.handsPlayed, g.maxDiscards()-g.discardsUsed, g.money, g.jokers, bossName)
 
 					// Remove purchased item and update available jokers
 					shopItems[choice-1] = Joker{}
@@ -782,6 +853,8 @@ func (g *Game) showShopWithItems(availableJokers []Joker, shopItems []Joker) {
 			}
 		} else if action == PlayerActionMoveJoker {
 			g.handleMoveJokerAction(params)
+		} else if action == PlayerActionSellJoker {
+			g.handleSellJokerAction(params)
 		} else if action == PlayerActionBuy {
 			choice := params[0]
 			if choice, err := strconv.Atoi(choice); err == nil && choice >= 1 && choice <= len(shopItems) {
@@ -802,6 +875,12 @@ func (g *Game) showShopWithItems(availableJokers []Joker, shopItems []Joker) {
 						Item:           NewShopItemData(selectedJoker, g.money+selectedJoker.Price),
 						RemainingMoney: g.money,
 					})
+					bossName := ""
+					if g.currentBlind == BossBlind {
+						bossName = g.currentBossRule.Description()
+					}
+					g.eventEmitter.EmitGameState(g.currentAnte, g.currentBlind, g.currentTarget, g.totalScore,
+						MaxHands-g.handsPlayed, g.maxDiscards()-g.discardsUsed, g.money, g.jokers, bossName)
 
 					// Remove purchased item
 					shopItems[choice-1] = Joker{}
@@ -927,6 +1006,57 @@ func (g *Game) handleMoveJokerAction(params []string) {
 		return
 	}
 
+	bossName := ""
+	if g.currentBlind == BossBlind {
+		bossName = g.currentBossRule.Description()
+	}
 	g.eventEmitter.EmitGameState(g.currentAnte, g.currentBlind, g.currentTarget, g.totalScore,
-		MaxHands-g.handsPlayed, g.maxDiscards()-g.discardsUsed, g.money, g.jokers)
+		MaxHands-g.handsPlayed, g.maxDiscards()-g.discardsUsed, g.money, g.jokers, bossName)
+}
+
+// handleSellJokerAction removes a joker and refunds half its price
+func (g *Game) handleSellJokerAction(params []string) {
+	if len(params) != 1 {
+		g.eventEmitter.EmitEvent(InvalidActionEvent{
+			Action: "sell_joker",
+			Reason: "Usage: sell_joker <index>",
+		})
+		return
+	}
+
+	idx, err := strconv.Atoi(params[0])
+	if err != nil || idx < 1 || idx > len(g.jokers) {
+		g.eventEmitter.EmitEvent(InvalidActionEvent{
+			Action: "sell_joker",
+			Reason: fmt.Sprintf("Invalid joker number: %s", params[0]),
+		})
+		return
+	}
+
+	i := idx - 1
+	sold := g.jokers[i]
+	g.jokers = append(g.jokers[:i], g.jokers[i+1:]...)
+	refund := sold.Price / 2
+	g.money += refund
+
+	g.eventEmitter.EmitEvent(MessageEvent{
+		Message: fmt.Sprintf("Sold %s for $%d", sold.Name, refund),
+		Type:    "success",
+	})
+	bossName := ""
+	if g.currentBlind == BossBlind {
+		bossName = g.currentBossRule.Description()
+	}
+	g.eventEmitter.EmitGameState(g.currentAnte, g.currentBlind, g.currentTarget, g.totalScore,
+		MaxHands-g.handsPlayed, g.maxDiscards()-g.discardsUsed, g.money, g.jokers, bossName)
+}
+
+// applyBossEffect modifies game state based on the current boss's effect
+func (g *Game) applyBossEffect() {
+	switch g.currentBoss.Effect {
+	case DoubleChips:
+		g.currentTarget *= 2
+	case HalveMoney:
+		g.money /= 2
+	}
 }

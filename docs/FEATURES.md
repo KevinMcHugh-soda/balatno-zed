@@ -69,7 +69,7 @@ Buy (1) The Golden Joker, or (s)kip shop:
 - **Ownership Check**: Won't offer jokers the player already owns
 - **Current Inventory**: Displays owned jokers clearly
 - **Simple Input**: Type `1` to buy, anything else to skip
-- **Joker Reordering**: Press `j` to reorder owned jokers
+- **Joker Reordering**: Press `j` to reorder owned jokers, `s` to sell the selected joker for half price
 
 ---
 
@@ -88,7 +88,7 @@ type Joker struct {
 ### YAML Joker Configuration System
 - **15+ Configurable Jokers**: All defined in `jokers.yaml`
 - **Runtime Loading**: No compilation needed for new jokers
-- **Three Effect Types**: AddMoney, AddChips, AddMult
+- **Five Effect Types**: AddMoney, AddChips, AddMult, MultiplyMult, ReplayCard
 - **Hand-Based Triggers**: Effects activate based on played hand types
 - **Fallback Safety**: Uses defaults if YAML file missing/invalid
 
@@ -112,6 +112,10 @@ type Joker struct {
 - **Three's a Charm** ($6): +15 mult if hand contains Three of a Kind
 - **Linear Logic** ($7): +20 mult if hand contains a Straight
 - **Effect**: Increases final multiplier for explosive scoring
+
+#### MultiplyMult Jokers
+- **Multiplier** ($8): ×2 mult every hand
+- **Effect**: Multiplies final multiplier for massive boosts
 
 #### ReplayCard Jokers
 - **Face Dancer** ($7): Face cards are scored twice
@@ -225,6 +229,18 @@ func PlayerHasJoker(playerJokers []Joker, jokerName string) bool
 
 ---
 
+## 💀 Boss Blind Modifiers
+
+Boss Blinds now apply a random rule to shake up gameplay:
+
+- **Hearts score zero** – any heart card contributes no value
+- **Hand size reduced by 1** – start the blind with one fewer card
+- **Hand size increased by 1** – begin with an extra card for more options
+
+These modifiers are announced at the start of each Boss Blind.
+
+---
+
 ## 🚀 Future Expansion
 
 ### Ready Framework
@@ -295,8 +311,8 @@ const (
 
 ### Scoring Integration
 - **Hand Evaluation**: Jokers checked during `EvaluateHand()`
-- **Effect Application**: `CalculateJokerHandBonus()` returns chips/mult bonuses
-- **Score Calculation**: `(base + joker_chips + cards) × (base_mult + joker_mult)`
+- **Effect Application**: `CalculateJokerHandBonus()` returns chips, mult bonuses, and multiplier factors
+- **Score Calculation**: `(base + joker_chips + cards) × (base_mult + joker_mult) × joker_mult_factor`
 - **Visual Feedback**: Detailed breakdown shows joker contributions
 
 ### Strategic Impact
@@ -322,5 +338,5 @@ This implementation brings Balatro CLI significantly closer to the authentic Bal
 ## 💾 Save & Load
 
 - **Load from JSON**: Resume a run using `-load <file>`
-- **Auto-save**: Game state written to timestamped JSON when quitting or timing out
+- **Auto-save**: Game state written to `saves/` as timestamped JSON when quitting or timing out
 - **Save format**: JSON with `save_version`, `seed`, `current_ante`, `current_blind`, `current_money`, and `current_jokers`
