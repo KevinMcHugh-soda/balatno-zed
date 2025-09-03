@@ -210,10 +210,14 @@ func createJokerFromConfig(config JokerConfig) Joker {
 			if cardRule == "" {
 				cardRule = CardNone
 			}
+			handRule := e.HandMatchingRule
+			if handRule == "" {
+				handRule = None
+			}
 			effects = append(effects, JokerEffectConfig{
 				Effect:           e.Effect,
 				EffectMagnitude:  e.EffectMagnitude,
-				HandMatchingRule: e.HandMatchingRule,
+				HandMatchingRule: handRule,
 				CardMatchingRule: cardRule,
 			})
 		}
@@ -222,10 +226,14 @@ func createJokerFromConfig(config JokerConfig) Joker {
 		if cardRule == "" {
 			cardRule = CardNone
 		}
+		handRule := config.HandMatchingRule
+		if handRule == "" {
+			handRule = None
+		}
 		effects = append(effects, JokerEffectConfig{
 			Effect:           config.Effect,
 			EffectMagnitude:  config.EffectMagnitude,
-			HandMatchingRule: config.HandMatchingRule,
+			HandMatchingRule: handRule,
 			CardMatchingRule: cardRule,
 		})
 	}

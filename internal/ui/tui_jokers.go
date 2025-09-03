@@ -53,15 +53,15 @@ func (jm *JokerOrderMode) handleKeyPress(m *TUIModel, msg string) (tea.Model, te
 		}
 		return m, nil
 	case "s":
-		if jm.selected == nil {
+		if jm.selected == -1 {
 			m.setStatusMessage("Select a joker first")
 			return m, nil
 		}
-		idx := *jm.selected
+		idx := jm.selected
 		joker := m.gameState.Jokers[idx]
 		m.sendAction(game.PlayerActionSellJoker, []string{strconv.Itoa(idx + 1)})
 		m.gameState.Jokers = append(m.gameState.Jokers[:idx], m.gameState.Jokers[idx+1:]...)
-		jm.selected = nil
+		jm.selected = -1
 		m.setStatusMessage(fmt.Sprintf("Sold %s for $%d", joker.Name, joker.Price/2))
 		return m, nil
 	case "up", "k":

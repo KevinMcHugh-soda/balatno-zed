@@ -92,6 +92,27 @@ func TestCompositeJoker(t *testing.T) {
 	}
 }
 
+// TestCompositeMoneyAndChips verifies composite jokers with both money and chip effects.
+func TestCompositeMoneyAndChips(t *testing.T) {
+	cfg := JokerConfig{
+		Name: "Money Chips",
+		Effects: []JokerEffectConfig{
+			{Effect: AddMoney, EffectMagnitude: 3},
+			{Effect: AddChips, EffectMagnitude: 10, HandMatchingRule: ContainsPair},
+		},
+	}
+	joker := createJokerFromConfig(cfg)
+
+	if reward := CalculateJokerRewards([]Joker{joker}); reward != 3 {
+		t.Fatalf("expected money reward 3, got %d", reward)
+	}
+
+	chips, mult, factor := CalculateJokerHandBonus([]Joker{joker}, "Pair", []Card{})
+	if chips != 10 || mult != 0 || factor != 1 {
+		t.Fatalf("expected chips=10 mult=0 factor=1, got chips=%d mult=%d factor=%d", chips, mult, factor)
+	}
+}
+
 // TestMultiplyMult verifies jokers that multiply the multiplier.
 func TestMultiplyMult(t *testing.T) {
 	cfg := JokerConfig{Name: "Doubler", Effects: []JokerEffectConfig{{Effect: MultiplyMult, EffectMagnitude: 2, HandMatchingRule: ContainsPair}}}

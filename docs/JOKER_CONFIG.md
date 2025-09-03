@@ -17,6 +17,8 @@ jokers:
         effect_magnitude: 30    # Strength of effect
         hand_matching_rule: "ContainsPair"  # When to trigger based on hand type
         card_matching_rule: "IsAce"         # (Optional) bonus per matching card
+
+`hand_matching_rule` and `card_matching_rule` default to `"None"` when omitted.
 ```
 
 ## 🎭 Effect Types
